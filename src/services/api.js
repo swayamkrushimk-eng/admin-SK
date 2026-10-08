@@ -1,5 +1,5 @@
 // Admin API Service connecting to Swayamkrushi Backend Server
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.swayamkrushi.org/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 // ─── ADMIN AUTH & STATS ──────────────────────────────────────────────────
 export async function adminLogin(password) {
