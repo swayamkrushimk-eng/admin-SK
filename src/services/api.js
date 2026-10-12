@@ -421,6 +421,24 @@ export async function uploadMedia(file, resourceType = 'video') {
   return data.url
 }
 
+export async function deleteMediaFromCloudinary(urlOrPublicId, resourceType = 'image') {
+  if (!urlOrPublicId) return { success: false }
+  try {
+    const res = await fetch(`${API_BASE_URL}/delete-media`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: urlOrPublicId, resourceType })
+    })
+    if (res.ok) {
+      return await res.json()
+    }
+  } catch (err) {
+    console.warn('Failed to delete media from backend/Cloudinary:', err.message)
+  }
+  return { success: false }
+}
+
+
 // ─── MANAGING COMMITTEE API ───────────────────────────────────────────────
 const COMMITTEE_STORAGE_KEY = 'swayamkrushi_committee_members'
 

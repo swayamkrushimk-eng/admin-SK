@@ -86,6 +86,7 @@ import {
   updateInsider,
   deleteInsider,
   uploadMedia,
+  deleteMediaFromCloudinary,
   fetchCommitteeMembers,
   createCommitteeMember,
   updateCommitteeMember,
@@ -126,6 +127,7 @@ const DEFAULT_ARTICLE_CAPTIONS = {
   'story-womens-empowerment': "Women's Empowerment — A Swayamkrushi Byproduct",
   'story-direct-speak': 'Direct Speak: Reflections on Thirty-Five Years of Service',
   'story-exercise': 'Exercise of a Different Kind',
+  'story-therapy-body-soul-mind': 'Therapy for body, soul and mind',
   'story-hard-work': 'Hard Work Never Goes Unrewarded!',
   'story-kitchen': 'Kitchen — Beehive of Activity',
   'story-sai-baba': "The Mysterious 'Appearance' of Shirdi Sai Baba",
@@ -140,21 +142,6 @@ const DEFAULT_ARTICLE_CAPTIONS = {
 
 const DEFAULT_ARTICLE_IMAGES = {
   'home-of-care': [
-    {
-      url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791531099/swayamkrushi/p2lfxtvjcg6pwrmstbq5.png',
-      caption: 'Akhila Hemmali and Tanuj Goyal welcoming visitors at the Swayamkrushi front desk',
-      alt: 'Akhila Hemmali and Tanuj Goyal welcoming visitors at Swayamkrushi'
-    },
-    {
-      url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791571992/swayamkrushi/swayamkrushi_campus_building.jpg',
-      caption: 'Swayamkrushi Campus, Jawahar Nagar',
-      alt: 'Swayamkrushi Campus, Jawahar Nagar'
-    },
-    {
-      url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791531206/swayamkrushi/ge24b7evibo5wwgpvoqs.jpg',
-      caption: 'Vocational training and community integration at Swayamkrushi',
-      alt: 'Vocational training and community integration at Swayamkrushi'
-    },
     {
       url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791531289/swayamkrushi/xg9qemgyszqdhbsjymy8.jpg',
       caption: 'The heart and soul of Swayamkrushi: Manjulaa Kalyaan, Founder-Director',
@@ -445,7 +432,7 @@ const DEFAULT_MEDIA_ARTICLES = [
     badge: 'TELANGANA TODAY E-PAPER',
     image: '',
     isClipping: false,
-    excerpt: 'Telangana Today print & e-paper edition feature on Swayamkrushi’s 35th milestone, celebrating founder Manjula Kalyan and the journey of special education in Secunderabad.',
+    excerpt: 'Telangana Today print & e-paper edition feature on Swayamkrushi’s 35th milestone, celebrating founder Manjulaa Kalyaan and the journey of special education in Secunderabad.',
     readTime: 'E-Paper Edition',
     tags: ['Telangana Today', 'E-Paper', 'Hyderabad District', 'Special Education'],
     articleUrl: 'https://epaper.telanganatoday.com/article/Hyderabad?OrgId=30830d8e731&imageview=1&standalone=1&device=desktop',
@@ -496,12 +483,80 @@ const DEFAULT_MEDIA_ARTICLES = [
     badge: 'THE HINDU SPOTLIGHT',
     image: '',
     isClipping: true,
-    excerpt: 'Swayamkrushi, a Hyderabad-based non-profit organisation working for persons with intellectual disabilities, is celebrating 35 years of service with a focus on education, vocational training and independent living. Founder Manjula Kalyan was felicitated by dignitaries.',
+    excerpt: 'Swayamkrushi, a Hyderabad-based non-profit organisation working for persons with intellectual disabilities, is celebrating 35 years of service with a focus on education, vocational training and independent living. Founder Manjulaa Kalyaan was felicitated by dignitaries.',
     readTime: 'Newspaper Report',
     tags: ['The Hindu', '35th Anniversary', 'Founder Felicitation', 'Special Education'],
     articleUrl: 'https://share.google/YhznuCLOlokk6iVY6',
     featured: true,
     order: 8
+  },
+  {
+    id: 'eenadu-epaper-2026-10-10',
+    title: 'Eenadu E-Paper: 35 ఏళ్ల స్వయంకృషి సేవా ప్రస్థానం',
+    outlet: 'Eenadu Telugu Daily',
+    outletType: 'Print & Newspapers',
+    date: '10/10/2026',
+    category: 'Regional Press',
+    badge: 'EENADU E-PAPER',
+    image: '',
+    isClipping: false,
+    excerpt: 'ఈనాడు దినపత్రిక కథనం: మేధో వైకల్యం కలిగిన వ్యక్తుల సాధికారత, విద్యాబోధన, జీవనోపాధి మరియు సంరక్షణకు విశేష కృషి చేస్తున్న స్వయంకృషి సంస్థ ప్రస్థానం.',
+    readTime: 'Telugu E-Paper',
+    tags: ['Eenadu', 'Telugu E-Paper', 'Regional Press', 'Special Education'],
+    articleUrl: 'https://epaper.eenadu.net/Home/Index?date=10/10/2026&eid=239&pid=3613532',
+    featured: false,
+    order: 9
+  },
+  {
+    id: 'ninadam-telangana-2026-10-10',
+    title: 'Ninadam Telangana: స్వయంకృషి సేవా ప్రస్థానం',
+    outlet: 'Ninadam News',
+    outletType: 'Print & Newspapers',
+    date: '10/10/2026',
+    category: 'Regional Press',
+    badge: 'NINADAM E-PAPER',
+    image: '',
+    isClipping: false,
+    excerpt: 'నినాదం తెలంగాణ దినపత్రిక కథనం: ప్రత్యేక అవసరాలు గల వ్యక్తుల అభ్యున్నతి, సంరక్షణ మరియు జీవనోపాధి కల్పిస్తున్న స్వయంకృషి సంస్థ విశేష సేవా కథనం.',
+    readTime: 'Telugu E-Paper',
+    tags: ['Ninadam News', 'Telugu E-Paper', 'Telangana', 'Community Care'],
+    articleUrl: 'https://epaper.ninadamnews.com/paper.php?date=2026-10-10&edition=80',
+    featured: false,
+    order: 10
+  },
+  {
+    id: 'andhra-prabha-rangareddy-2026-10-10',
+    title: 'Andhra Prabha Rangareddy Edition: స్వయంకృషి సేవా ప్రస్థానం',
+    outlet: 'Andhra Prabha',
+    outletType: 'Print & Newspapers',
+    date: '10/10/2026',
+    category: 'Regional Press',
+    badge: 'ANDHRA PRABHA E-PAPER',
+    image: '',
+    isClipping: false,
+    excerpt: 'ఆంధ్రప్రభ రంగారెడ్డి జిల్లా ఎడిషన్ కథనం: మేధోపరమైన సవాళ్లు ఉన్న వ్యక్తులకు విద్యాబోధన, వృత్తి శిక్షణ మరియు పునరావాస సేవలందిస్తున్న స్వయంకృషి సంస్థ ప్రస్థానం.',
+    readTime: 'Telugu E-Paper',
+    tags: ['Andhra Prabha', 'Rangareddy District', 'Telugu E-Paper', 'Vocational Training'],
+    articleUrl: 'https://epaper.prabhanews.com/viewer/?date=2026-10-10&section=Telangana+Districts&edition=Rangareddy&page=2',
+    featured: false,
+    order: 11
+  },
+  {
+    id: 'andhra-jyothy-uppal-malkajgiri-2026-10-10',
+    title: 'Andhra Jyothy Uppal-Malkajgiri Edition: స్వయంకృషి సేవా ప్రస్థానం',
+    outlet: 'Andhra Jyothy',
+    outletType: 'Print & Newspapers',
+    date: '10/10/2026',
+    category: 'Regional Press',
+    badge: 'ANDHRA JYOTHY E-PAPER',
+    image: '',
+    isClipping: false,
+    excerpt: 'ఆంధ్రజ్యోతి ఉప్పల్-మల్కాజ్‌గిరి ఎడిషన్ కథనం: మూడున్నర దశాబ్దాలుగా మానసిక వికలాంగుల వికాసం, విద్యాబోధన, సంరక్షణ మరియు జీవనోపాధి కల్పిస్తున్న స్వయంకృషి సంస్థ.',
+    readTime: 'Telugu E-Paper',
+    tags: ['Andhra Jyothy', 'Uppal Malkajgiri', 'Telugu E-Paper', 'Special Education'],
+    articleUrl: 'https://epaper.andhrajyothy.com/Hyd_Uppal_Malkajgiri?eid=122&edate=10/10/2026&pgid=1524855&device=desktop&view=3',
+    featured: false,
+    order: 12
   }
 ]
 
@@ -742,7 +797,7 @@ export default function App() {
     id: 'story-encounter',
     title: 'Chance Encounter That Changed My Life',
     category: "Director's Voice",
-    attribution: 'Ms Manjula Kalyan',
+    attribution: 'Ms Manjulaa Kalyaan',
     excerpt: 'A chance encounter with Dr Maria Egg-Benes, a renowned special educator from Switzerland, at a workshop in Bengaluru, turned out to be the turning point in my life, and a defining moment which revealed the path I was to take to serve the less fortunate in society.',
     contentHtml: '',
     paragraphs: [],
@@ -771,7 +826,7 @@ export default function App() {
           _id: match._id,
           title: match.title || '',
           category: match.category || "Director's Voice",
-          attribution: match.attribution || 'Ms Manjula Kalyan',
+          attribution: match.attribution || 'Ms Manjulaa Kalyaan',
           excerpt: match.excerpt || '',
           contentHtml: match.contentHtml || (match.paragraphs ? match.paragraphs.map((p) => `<p>${p}</p>`).join('') : ''),
           paragraphs: match.paragraphs || [],
@@ -1229,7 +1284,7 @@ export default function App() {
       }))
     }
 
-    // ALSO check contentHtml for any additional images/figures and their captions
+    // Inspect contentHtml to enrich captions, or ONLY populate if art.images was NOT defined
     if (initialHtml) {
       const parser = new DOMParser()
       const doc = parser.parseFromString(initialHtml, 'text/html')
@@ -1242,39 +1297,42 @@ export default function App() {
         if (src) {
           const existing = initialImages.find((x) => isSameImage(x.url, src))
           const captionText = figcap?.textContent?.trim() || imgEl?.getAttribute('alt')?.trim() || ''
-          if (!existing) {
+          if (existing) {
+            if (!existing.caption && captionText) existing.caption = captionText
+          } else if (!Array.isArray(art.images)) {
             initialImages.push({
               url: src,
               caption: captionText,
               alt: imgEl?.getAttribute('alt')?.trim() || captionText
             })
-          } else if (!existing.caption && captionText) {
-            existing.caption = captionText
           }
         }
       })
 
-      const standaloneImgs = Array.from(doc.querySelectorAll('img'))
-      standaloneImgs.forEach((imgEl) => {
-        if (imgEl.closest('figure')) return
-        const src = imgEl.getAttribute('src')?.trim()
-        if (src) {
-          const existing = initialImages.find((x) => isSameImage(x.url, src))
-          const altText = imgEl.getAttribute('alt')?.trim() || imgEl.getAttribute('title')?.trim() || ''
-          if (!existing) {
-            initialImages.push({
-              url: src,
-              caption: altText,
-              alt: altText
-            })
-          } else if (!existing.caption && altText) {
-            existing.caption = altText
+      if (!Array.isArray(art.images)) {
+        const standaloneImgs = Array.from(doc.querySelectorAll('img'))
+        standaloneImgs.forEach((imgEl) => {
+          if (imgEl.closest('figure')) return
+          const src = imgEl.getAttribute('src')?.trim()
+          if (src) {
+            const existing = initialImages.find((x) => isSameImage(x.url, src))
+            const altText = imgEl.getAttribute('alt')?.trim() || imgEl.getAttribute('title')?.trim() || ''
+            if (!existing) {
+              initialImages.push({
+                url: src,
+                caption: altText,
+                alt: altText
+              })
+            } else if (!existing.caption && altText) {
+              existing.caption = altText
+            }
           }
-        }
-      })
+        })
+      }
     }
 
-    if (initialImages.length === 0) {
+    // Only fallback to defaults if art.images was NEVER defined
+    if (art.images === undefined && initialImages.length === 0 && !initialHtml) {
       const defaultImgs = DEFAULT_ARTICLE_IMAGES[art.id] || DEFAULT_ARTICLE_IMAGES[art._id]
       if (Array.isArray(defaultImgs) && defaultImgs.length > 0) {
         initialImages = defaultImgs.map((img) => ({ ...img }))
@@ -1318,10 +1376,67 @@ export default function App() {
   }
 
   const handleRemoveStoryImage = (index) => {
-    setArticleForm((prev) => ({
-      ...prev,
-      images: (prev.images || []).filter((_, i) => i !== index)
-    }))
+    const removedImg = (articleForm.images || [])[index]
+    const removedUrl = typeof removedImg === 'string' ? removedImg : removedImg?.url
+
+    setArticleForm((prev) => {
+      const updatedImages = (prev.images || []).filter((_, i) => i !== index)
+      let nextHtml = prev.contentHtml || ''
+      if (nextHtml && removedUrl) {
+        try {
+          const parser = new DOMParser()
+          const doc = parser.parseFromString(nextHtml, 'text/html')
+          let changed = false
+
+          // Remove any <figure> containing this image
+          const figures = Array.from(doc.querySelectorAll('figure'))
+          figures.forEach((fig) => {
+            const imgEl = fig.querySelector('img')
+            const src = imgEl?.getAttribute('src')?.trim()
+            if (src && (src === removedUrl || isSameImage(src, removedUrl))) {
+              fig.remove()
+              changed = true
+            }
+          })
+
+          // Remove standalone <img>
+          const imgs = Array.from(doc.querySelectorAll('img'))
+          imgs.forEach((imgEl) => {
+            const src = imgEl.getAttribute('src')?.trim()
+            if (src && (src === removedUrl || isSameImage(src, removedUrl))) {
+              const parent = imgEl.parentElement
+              imgEl.remove()
+              changed = true
+              if (parent && (parent.tagName === 'P' || parent.tagName === 'DIV')) {
+                if (!parent.textContent?.trim() && parent.children.length === 0) {
+                  parent.remove()
+                }
+              }
+            }
+          })
+
+          if (changed) {
+            nextHtml = doc.body.innerHTML
+          }
+        } catch (err) {
+          console.error('Error stripping removed image from contentHtml:', err)
+        }
+      }
+
+      return {
+        ...prev,
+        images: updatedImages,
+        contentHtml: nextHtml
+      }
+    })
+
+    if (removedUrl && removedUrl.includes('cloudinary.com')) {
+      deleteMediaFromCloudinary(removedUrl).catch((err) =>
+        console.error('Failed to delete removed image from Cloudinary:', err)
+      )
+    }
+
+    showNotification('Photo permanently removed from article and Cloudinary.')
   }
 
   const handleUploadStoryImage = async (e) => {
@@ -1401,16 +1516,51 @@ export default function App() {
       const customPoster = isVideoType && articleForm.videoPosterUrl && articleForm.videoPosterUrl.trim().length > 5 ? articleForm.videoPosterUrl.trim() : ''
       const finalThumbnailUrl = isVideoType ? (articleForm.videoThumbnailUrl?.trim() || generatedThumb || '') : ''
 
-      // Synchronize image captions into contentHtml figures & images
+      // Synchronize image captions and purge removed photos from contentHtml
       let finalContentHtml = articleForm.contentHtml || ''
-      if (finalContentHtml && Array.isArray(articleForm.images) && articleForm.images.length > 0) {
+      const cleanedImages = (articleForm.images || []).map((img) => ({
+        url: typeof img === 'string' ? img.trim() : (img.url || '').trim(),
+        caption: typeof img === 'object' ? (img.caption || '') : '',
+        alt: typeof img === 'object' ? (img.alt || img.caption || '') : ''
+      })).filter((img) => img.url.length > 0)
+
+      if (finalContentHtml) {
         const parser = new DOMParser()
         const doc = parser.parseFromString(finalContentHtml, 'text/html')
         let changed = false
 
-        articleForm.images.forEach((imgObj) => {
-          if (!imgObj.url) return
-          const targetCaption = (imgObj.caption || '').trim()
+        // Purge figures not in cleanedImages
+        const figures = Array.from(doc.querySelectorAll('figure'))
+        figures.forEach((fig) => {
+          const imgEl = fig.querySelector('img')
+          const src = imgEl?.getAttribute('src')?.trim()
+          if (!src || !cleanedImages.some((imgObj) => isSameImage(imgObj.url, src))) {
+            fig.remove()
+            changed = true
+          }
+        })
+
+        // Purge standalone images not in cleanedImages
+        const standaloneImgs = Array.from(doc.querySelectorAll('img'))
+        standaloneImgs.forEach((imgEl) => {
+          if (imgEl.closest('figure')) return
+          const src = imgEl.getAttribute('src')?.trim()
+          if (!src || !cleanedImages.some((imgObj) => isSameImage(imgObj.url, src))) {
+            const parent = imgEl.parentElement
+            imgEl.remove()
+            changed = true
+            if (parent && (parent.tagName === 'P' || parent.tagName === 'DIV')) {
+              if (!parent.textContent?.trim() && parent.children.length === 0) {
+                parent.remove()
+              }
+            }
+          }
+        })
+
+        if (cleanedImages.length > 0) {
+          cleanedImages.forEach((imgObj) => {
+            if (!imgObj.url) return
+            const targetCaption = (imgObj.caption || '').trim()
 
           // 1. Sync <figure> tags
           const figures = Array.from(doc.querySelectorAll('figure'))
@@ -1442,17 +1592,12 @@ export default function App() {
             }
           })
         })
+      }
 
         if (changed) {
           finalContentHtml = doc.body.innerHTML
         }
       }
-
-      const cleanedImages = (articleForm.images || []).map((img) => ({
-        url: typeof img === 'string' ? img.trim() : (img.url || '').trim(),
-        caption: typeof img === 'object' ? (img.caption || '') : '',
-        alt: typeof img === 'object' ? (img.alt || img.caption || '') : ''
-      })).filter((img) => img.url.length > 0)
 
       const cleanedPayload = {
         ...articleForm,
@@ -1568,7 +1713,7 @@ export default function App() {
       _id: art._id,
       title: art.title || '',
       category: art.category || "Director's Voice",
-      attribution: art.attribution || 'Ms Manjula Kalyan',
+      attribution: art.attribution || 'Ms Manjulaa Kalyaan',
       excerpt: art.excerpt || '',
       contentHtml: initialHtml,
       paragraphs: art.paragraphs && art.paragraphs.length ? art.paragraphs : [''],
@@ -1590,7 +1735,7 @@ export default function App() {
       id: newId,
       title: 'Direct Speak: New Column Entry',
       category: "Director's Voice",
-      attribution: 'Ms Manjula Kalyan, Founder & Director',
+      attribution: 'Ms Manjulaa Kalyaan, Founder & Director',
       excerpt: "Enter a short summary or reflection of this Director's Voice piece here...",
       contentHtml: '<h2>Direct Speak</h2><p>Write your direct reflection here...</p>',
       paragraphs: ['Write your direct reflection here...'],
@@ -2283,7 +2428,7 @@ export default function App() {
               onClick={() => setActiveTab('insiders')}
             >
               <Video size={18} className="admin-nav-icon" />
-              <span>Insider's Views ({insiders.length})</span>
+              <span>Insiders' Views ({insiders.length})</span>
             </button>
 
             <button
@@ -2442,7 +2587,7 @@ export default function App() {
                   </div>
                   <div className="admin-stat-info">
                     <span className="admin-stat-count">{insiders.length}</span>
-                    <span className="admin-stat-label">Insider's Views</span>
+                    <span className="admin-stat-label">Insiders' Views</span>
                   </div>
                   <span className="admin-stat-action">
                     Upload & Manage Videos <ChevronRight size={13} style={{ display: 'inline' }} />
@@ -3569,7 +3714,7 @@ export default function App() {
                             type="text"
                             value={directSpeakForm.attribution}
                             onChange={(e) => setDirectSpeakForm((prev) => ({ ...prev, attribution: e.target.value }))}
-                            placeholder="e.g. Ms Manjula Kalyan, Founder & Director"
+                            placeholder="e.g. Ms Manjulaa Kalyaan, Founder & Director"
                             className="admin-input"
                           />
                         </div>
@@ -3805,7 +3950,7 @@ export default function App() {
                                 type="text"
                                 value={directSpeakForm.imageAlt}
                                 onChange={(e) => setDirectSpeakForm((prev) => ({ ...prev, imageAlt: e.target.value }))}
-                                placeholder="e.g. Ms Manjula Kalyan at Swayamkrushi"
+                                placeholder="e.g. Ms Manjulaa Kalyaan at Swayamkrushi"
                                 className="admin-input"
                                 style={{ fontSize: '12px' }}
                               />
@@ -3966,7 +4111,7 @@ export default function App() {
             <div className="admin-tab-content">
               <div className="admin-content-header">
                 <div>
-                  <h1 className="admin-section-title">Insider's Views & Testimonials</h1>
+                  <h1 className="admin-section-title">Insiders' Views & Testimonials</h1>
                   <p className="admin-section-desc">
                     Manage speaker video stories, testimonials, custom thumbnails, quotes, and timestamps displayed on the Insiders Wall.
                   </p>
@@ -5962,7 +6107,7 @@ export default function App() {
                       required
                       value={insiderForm.name}
                       onChange={(e) => setInsiderForm({ ...insiderForm, name: e.target.value })}
-                      placeholder="e.g. Ms Manjula Kalyan"
+                      placeholder="e.g. Ms Manjulaa Kalyaan"
                       className="admin-input"
                     />
                   </div>
