@@ -86,6 +86,7 @@ import {
   updateInsider,
   deleteInsider,
   uploadMedia,
+  deleteMediaFromCloudinary,
   fetchCommitteeMembers,
   createCommitteeMember,
   updateCommitteeMember,
@@ -104,85 +105,126 @@ import defaultJoinUsBadge from './assets/images/join-us-badge.png'
 import {
   getVideoThumbnailUrl,
   getDeliveryVideoUrl,
-  resolveArticleMedia
+  resolveArticleMedia,
+  isVideoUrl
 } from './utils/mediaUtils'
+import defaultBirthdayCourtyard from './assets/images/birthday-courtyard.jpg'
+
+const DEFAULT_ARTICLE_COVER_IMAGES = {
+  'home-of-care': defaultBirthdayCourtyard,
+  'group-homes': 'https://res.cloudinary.com/ll9equhn/image/upload/v1791266119/swayamkrushi/articles/grouphome-residents.jpg',
+  'building-blocks': 'https://res.cloudinary.com/ll9equhn/image/upload/v1791791422/swayamkrushi/pfado6pu8ir2fmbrovtp.jpg',
+  'bed-hotspot': 'https://res.cloudinary.com/ll9equhn/video/upload/v1791802644/swayamkrushi/mpelqvpwjkm5ks5f9hkl.jpg'
+}
 
 const DEFAULT_ARTICLE_CAPTIONS = {
-  'home-of-care': 'FUN AND FROLIC : A video collage of activities In Swayamkrushi',
-  'group-homes': 'Residents outside their home — the group homes have run since 1991.',
+  'home-of-care': 'The five-acre permanent campus of Swayamkrushi at Jawahar Nagar, Secunderabad.',
+  'group-homes': 'INDEPENDENT LIVING : Group Home residents pose for a picture at a function in the Swayamkrushi campus',
   'bed-hotspot': 'Staff, students and residents together at a National Trust event.',
   'building-blocks': 'CLASS IN PROGRESS : Chavan, spl educator, explains different concepts to his students',
-  'story-sowing-seeds': 'Y Lalitha Kumari guiding special students at the sewing machines',
-  'story-tailoring': 'Y Lalitha Kumari guiding special students at the sewing machines',
-  'story-luck-hardwork': "GAME ON: When The going gets tough, the tough get going ,that's Srilatha for you",
+  'story-sowing-seeds': 'Y Lalitha Kumari guiding special students at the sewing machines in Swayamkrushi',
+  'story-tailoring': 'Y Lalitha Kumari guiding special students at the sewing machines in Swayamkrushi',
+  'story-luck-hardwork': 'GAME ON: When the going gets tough, the tough get going, that’s Srilatha for you',
   'story-15-years': '15 Years for One Word, and Then the Exhilaration!',
-  'story-fifteen-years': '15 Years for One Word, and Then the Exhilaration!',
-  'story-art-equaliser': 'Art — The Great Equaliser',
-  'story-champions': 'Champions All the Way — Special Olympics',
-  'story-dairy': 'Dairy for a Purpose!',
-  'story-kadiam': 'Destination Kadiam, for Plants',
-  'story-encounter': 'Chance Encounter That Changed My Life',
-  'story-group-homes-initiative': 'Direct Reflections: Pioneering Group Homes',
-  'story-womens-empowerment': "Women's Empowerment — A Swayamkrushi Byproduct",
+  'story-fifteen-years': 'MATCH THAT : Speech Therapist Babu at work in the speech therapy unit',
+  'story-art-equaliser': 'DIFFERENT STROKES : Bharati handles her students with a delicate touch and a smile',
+  'story-champions': 'CHAMPIONS ALL: Special Olympics athletes from Swayamkrushi bringing pride to the nation',
+  'story-dairy': 'GOOD YIELD: Prabhakar and his father Papi Reddy tend to the cows',
+  'story-kadiam': 'ENVIRONMENT CONSCIOUS: The Swayamkrushi campus is environment-friendly with solar generation and plenty of greenery',
+  'story-encounter': 'EARLY YEARS : Manjulaa Kalyaan with a group of special educators in New Delhi',
+  'story-group-homes-initiative': 'Direct Reflections: Pioneering Group Homes since 1991',
+  'story-womens-empowerment': 'OPPORTUNITIES FOR WOMEN : Most of the employees in Swayamkrushi are women from neighbouring areas',
   'story-direct-speak': 'Direct Speak: Reflections on Thirty-Five Years of Service',
-  'story-exercise': 'Exercise of a Different Kind',
-  'story-hard-work': 'Hard Work Never Goes Unrewarded!',
-  'story-kitchen': 'Kitchen — Beehive of Activity',
-  'story-sai-baba': "The Mysterious 'Appearance' of Shirdi Sai Baba",
-  'story-nios': 'NIOS — Boon for Persons with Intellectual Disabilities',
-  'story-paper-bag': "Paper Bag Making — It's a 'Mild' Job",
-  'story-recipe-success': 'Recipe for Success!',
-  'story-covid': 'The Covid Years — Opportunities to Serve',
-  'story-thinking': 'Thinking Out of the Box!',
-  'story-visa': 'Visa to Go Abroad',
-  'dare-to-dream': 'Dare to Dream — Swayamkrushi Founding Journey'
+  'story-exercise': 'LOOSENING UP : Physio Priyadarshini supervises the physical activities of students in the physiotherapy section',
+  'story-therapy-body-soul-mind': 'HEALING TOUCH: Therapy sessions nurture physical, emotional and cognitive well-being',
+  'story-hard-work': 'TRUE GRIT: From weeding to teaching, Aruna has come a long way in life',
+  'story-kitchen': 'THE DAILY GRIND : The kitchen hums with activity through the day',
+  'story-sai-baba': 'MATTER OF FAITH: Teachers and residents gather for prayer at the Shirdi Sai Baba meditation hall',
+  'story-nios': 'CLASS IN PROGRESS : Students pay rapt attention in the NIOS class',
+  'story-paper-bag': 'BAGLOAD OF FUN : Trainees enjoy making paper bags and simple screen printing',
+  'story-recipe-success': 'CREATIVE MIND : Even as a kid, Vishnu took to art like a fish takes to water',
+  'story-covid': 'COMPACT UNIT : The Parents’ Homes are a blessing for many retired parents of children registered with Swayamkrushi',
+  'story-thinking': 'THINKING AHEAD: Manjulaa Kalyaan envisioned progressive care and community support from the very start',
+  'story-visa': 'GLOBAL HORIZONS: B.Ed Special Education graduates from Swayamkrushi serving across the world',
+  'dare-to-dream': 'THE CENTRAL COURTYARD : A panoramic view of the central portion of the building blocks in Swayamkrushi'
+}
+
+const KNOWN_MEDIA_CAPTIONS = {
+  'fcqzwernnlqv23ew5ycg': 'FUN AND FROLIC : A video collage of activities and daily life in Swayamkrushi',
+  'gc9ynzrgigr3ulqvdpb8': 'DANCE & HARMONY : Special students and teachers celebrate joyful moments at Swayamkrushi',
+  'tetjghumfxweag27fhi8': 'An overview... Principal Sarada speaks about the B.Ed Special Education programme',
+  'ggz9gr7mcoceerqnhsxy': 'Direct from the Head.... Dr. PVB Sudhakar gives an introduction to special educator training',
+  'jbx2wctpsvpjpoll0fnl': 'CLASS IN ACTION : Chavan guiding students through developmental building block exercises',
+  'vcuwit1kzoa5rvnc2zee': 'THERAPY IN MOTION : Therapeutic routines and physical rehabilitation at Swayamkrushi',
+  'xg9qemgyszqdhbsjymy8': 'The heart and soul of Swayamkrushi: Manjulaa Kalyaan, Founder-Director',
+  'diizcur6lyalwamfkie3': 'The heart and soul of Swayamkrushi: Manjulaa Kalyaan, Founder-Director',
+  'pfado6pu8ir2fmbrovtp': 'CLASS IN PROGRESS : Chavan, spl educator, explains different concepts to his students',
+  'pnui7ub8rucjkivunlmr': 'IT AIN’T EASY: A PwD tries to thread the needle at the jute bag making unit',
+  'wiucyh179ols5xikxett': 'READY FOR SHOPPING: A variety of jute bags produced by the trainees',
+  'puvccdjlbmj6bdxcnzlw': 'EARLY YEARS : Manjulaa Kalyaan with a group of special educators in New Delhi',
+  'brmtve6ssso8s704wujs': 'UNSOLVED MYSTERY: The life size statue of Shirdi Sai Baba just landed at the doorstep of Swayamkrushi one day',
+  'matnazsisdrwpl9z52tj': 'CREATIVE MIND : Even as a kid, Vishnu took to art like a fish takes to water',
+  'ap3zcgue1dffcky0zi42': 'GAME ON: When the going gets tough, the tough get going, that’s Srilatha for you',
+  'wn5syoftkcqlvpod62ar': 'KITCHEN ARMY : The kitchen staff take a little time off to strike a pose',
+  'ugi3idv05bq2piv8iv1w': 'GLITTERING : The spacious and clean dining area',
+  'nqwhfo6urobqrpobckwh': 'THICK FOLIAGE: A rooftop view of the greenery around the Swayamkrushi campus',
+  'hpbjhgf6vp8z8jmdteqk': 'THE ‘ADDA’: The mango and other fruit bearing trees provide the perfect setting for a break or lunch',
+  'wd8sh8igljtsqsgecuni': 'MILK APLENTY: A view of the cow shed in Swayamkrushi',
+  'women_empowerment': 'OPPORTUNITIES FOR WOMEN : Most of the employees in Swayamkrushi are women from neighbouring areas',
+  'sccg3aspnqcdfr2rln1s': 'SOUND AND IMAGE: Babu coaxes a student to identify and say aloud the image seen',
+  'yzzazpi9okaij94b1vzm': 'STIRRING CREATIVITY: Bharathi explains different strokes in her class',
+  'r6zpqdcznwl1lc4ojrbp': 'EXPENDING ENERGY: A student goes through the motions of static cycling',
+  'ndf9pyzwaqdazpqyi2g9': 'TRUE GRIT: From weeding to teaching, Aruna has come a long way in life',
+  'wbke5nydefsld86sldf9': 'SCISSOR CUT: Maheshwari keeps a watchful eye as a vocational trainee cuts paper to size',
+  'yaipnhkf9rbuey2fws4u': 'TIME FOR TEST: Suhasini gets ready to check the academic levels of her students',
+  'cmidk3v6mcn5vcpgnkix': 'RELIEVED AND HAPPY: Chandrika and Purushottama Rao strike a happy pose in front of their unit in the Parents’ Homes section',
+  'mja7wzprk2cszn0jx2bb': 'THE CENTRAL COURTYARD : A panoramic view of the central portion of the building blocks in Swayamkrushi',
+  'mmxvk0i2ovnthwmuem6t': 'THINKING AHEAD: Manjulaa Kalyaan envisioned progressive care and community support from the very start'
+}
+
+const getKnownCaption = (url) => {
+  if (!url || typeof url !== 'string') return ''
+  for (const [key, caption] of Object.entries(KNOWN_MEDIA_CAPTIONS)) {
+    if (url.includes(key)) return caption
+  }
+  return ''
 }
 
 const DEFAULT_ARTICLE_IMAGES = {
   'home-of-care': [
     {
-      url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791531099/swayamkrushi/p2lfxtvjcg6pwrmstbq5.png',
-      caption: 'Akhila Hemmali and Tanuj Goyal welcoming visitors at the Swayamkrushi front desk',
-      alt: 'Akhila Hemmali and Tanuj Goyal welcoming visitors at Swayamkrushi'
-    },
-    {
-      url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791571992/swayamkrushi/swayamkrushi_campus_building.jpg',
-      caption: 'Swayamkrushi Campus, Jawahar Nagar',
-      alt: 'Swayamkrushi Campus, Jawahar Nagar'
-    },
-    {
-      url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791531206/swayamkrushi/ge24b7evibo5wwgpvoqs.jpg',
-      caption: 'Vocational training and community integration at Swayamkrushi',
-      alt: 'Vocational training and community integration at Swayamkrushi'
-    },
-    {
       url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791531289/swayamkrushi/xg9qemgyszqdhbsjymy8.jpg',
       caption: 'The heart and soul of Swayamkrushi: Manjulaa Kalyaan, Founder-Director',
-      alt: 'The heart and soul of Swayamkrushi: Manjulaa Kalyaan, Founder-Director'
+      alt: 'The heart and soul of Swayamkrushi: Manjulaa Kalyaan, Founder-Director',
+      type: 'image'
     }
   ],
   'story-sowing-seeds': [
     {
       url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791530115/swayamkrushi/pnui7ub8rucjkivunlmr.jpg',
-      caption: 'Y Lalitha Kumari guiding special students at the sewing machines',
-      alt: 'Y Lalitha Kumari guiding special students at the sewing machines in Swayamkrushi'
+      caption: 'Y Lalitha Kumari guiding special students at the sewing machines in Swayamkrushi',
+      alt: 'Y Lalitha Kumari guiding special students at the sewing machines in Swayamkrushi',
+      type: 'image'
     },
     {
       url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791530141/swayamkrushi/wiucyh179ols5xikxett.jpg',
       caption: 'Assorted eco-friendly jute and cotton bags created by the students',
-      alt: 'Handcrafted eco-friendly cotton and jute bags produced by Swayamkrushi trainees'
+      alt: 'Handcrafted eco-friendly cotton and jute bags produced by Swayamkrushi trainees',
+      type: 'image'
     }
   ],
   'story-tailoring': [
     {
       url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791530115/swayamkrushi/pnui7ub8rucjkivunlmr.jpg',
-      caption: 'Y Lalitha Kumari guiding special students at the sewing machines',
-      alt: 'Y Lalitha Kumari guiding special students at the sewing machines in Swayamkrushi'
+      caption: 'Y Lalitha Kumari guiding special students at the sewing machines in Swayamkrushi',
+      alt: 'Y Lalitha Kumari guiding special students at the sewing machines in Swayamkrushi',
+      type: 'image'
     },
     {
       url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791530141/swayamkrushi/wiucyh179ols5xikxett.jpg',
       caption: 'Assorted eco-friendly jute and cotton bags created by the students',
-      alt: 'Handcrafted eco-friendly cotton and jute bags produced by Swayamkrushi trainees'
+      alt: 'Handcrafted eco-friendly cotton and jute bags produced by Swayamkrushi trainees',
+      type: 'image'
     }
   ]
 }
@@ -445,7 +487,7 @@ const DEFAULT_MEDIA_ARTICLES = [
     badge: 'TELANGANA TODAY E-PAPER',
     image: '',
     isClipping: false,
-    excerpt: 'Telangana Today print & e-paper edition feature on Swayamkrushi’s 35th milestone, celebrating founder Manjula Kalyan and the journey of special education in Secunderabad.',
+    excerpt: 'Telangana Today print & e-paper edition feature on Swayamkrushi’s 35th milestone, celebrating founder Manjulaa Kalyaan and the journey of special education in Secunderabad.',
     readTime: 'E-Paper Edition',
     tags: ['Telangana Today', 'E-Paper', 'Hyderabad District', 'Special Education'],
     articleUrl: 'https://epaper.telanganatoday.com/article/Hyderabad?OrgId=30830d8e731&imageview=1&standalone=1&device=desktop',
@@ -496,12 +538,80 @@ const DEFAULT_MEDIA_ARTICLES = [
     badge: 'THE HINDU SPOTLIGHT',
     image: '',
     isClipping: true,
-    excerpt: 'Swayamkrushi, a Hyderabad-based non-profit organisation working for persons with intellectual disabilities, is celebrating 35 years of service with a focus on education, vocational training and independent living. Founder Manjula Kalyan was felicitated by dignitaries.',
+    excerpt: 'Swayamkrushi, a Hyderabad-based non-profit organisation working for persons with intellectual disabilities, is celebrating 35 years of service with a focus on education, vocational training and independent living. Founder Manjulaa Kalyaan was felicitated by dignitaries.',
     readTime: 'Newspaper Report',
     tags: ['The Hindu', '35th Anniversary', 'Founder Felicitation', 'Special Education'],
     articleUrl: 'https://share.google/YhznuCLOlokk6iVY6',
     featured: true,
     order: 8
+  },
+  {
+    id: 'eenadu-epaper-2026-10-10',
+    title: 'Eenadu E-Paper: 35 ఏళ్ల స్వయంకృషి సేవా ప్రస్థానం',
+    outlet: 'Eenadu Telugu Daily',
+    outletType: 'Print & Newspapers',
+    date: '10/10/2026',
+    category: 'Regional Press',
+    badge: 'EENADU E-PAPER',
+    image: '',
+    isClipping: false,
+    excerpt: 'ఈనాడు దినపత్రిక కథనం: మేధో వైకల్యం కలిగిన వ్యక్తుల సాధికారత, విద్యాబోధన, జీవనోపాధి మరియు సంరక్షణకు విశేష కృషి చేస్తున్న స్వయంకృషి సంస్థ ప్రస్థానం.',
+    readTime: 'Telugu E-Paper',
+    tags: ['Eenadu', 'Telugu E-Paper', 'Regional Press', 'Special Education'],
+    articleUrl: 'https://epaper.eenadu.net/Home/Index?date=10/10/2026&eid=239&pid=3613532',
+    featured: false,
+    order: 9
+  },
+  {
+    id: 'ninadam-telangana-2026-10-10',
+    title: 'Ninadam Telangana: స్వయంకృషి సేవా ప్రస్థానం',
+    outlet: 'Ninadam News',
+    outletType: 'Print & Newspapers',
+    date: '10/10/2026',
+    category: 'Regional Press',
+    badge: 'NINADAM E-PAPER',
+    image: '',
+    isClipping: false,
+    excerpt: 'నినాదం తెలంగాణ దినపత్రిక కథనం: ప్రత్యేక అవసరాలు గల వ్యక్తుల అభ్యున్నతి, సంరక్షణ మరియు జీవనోపాధి కల్పిస్తున్న స్వయంకృషి సంస్థ విశేష సేవా కథనం.',
+    readTime: 'Telugu E-Paper',
+    tags: ['Ninadam News', 'Telugu E-Paper', 'Telangana', 'Community Care'],
+    articleUrl: 'https://epaper.ninadamnews.com/paper.php?date=2026-10-10&edition=80',
+    featured: false,
+    order: 10
+  },
+  {
+    id: 'andhra-prabha-rangareddy-2026-10-10',
+    title: 'Andhra Prabha Rangareddy Edition: స్వయంకృషి సేవా ప్రస్థానం',
+    outlet: 'Andhra Prabha',
+    outletType: 'Print & Newspapers',
+    date: '10/10/2026',
+    category: 'Regional Press',
+    badge: 'ANDHRA PRABHA E-PAPER',
+    image: '',
+    isClipping: false,
+    excerpt: 'ఆంధ్రప్రభ రంగారెడ్డి జిల్లా ఎడిషన్ కథనం: మేధోపరమైన సవాళ్లు ఉన్న వ్యక్తులకు విద్యాబోధన, వృత్తి శిక్షణ మరియు పునరావాస సేవలందిస్తున్న స్వయంకృషి సంస్థ ప్రస్థానం.',
+    readTime: 'Telugu E-Paper',
+    tags: ['Andhra Prabha', 'Rangareddy District', 'Telugu E-Paper', 'Vocational Training'],
+    articleUrl: 'https://epaper.prabhanews.com/viewer/?date=2026-10-10&section=Telangana+Districts&edition=Rangareddy&page=2',
+    featured: false,
+    order: 11
+  },
+  {
+    id: 'andhra-jyothy-uppal-malkajgiri-2026-10-10',
+    title: 'Andhra Jyothy Uppal-Malkajgiri Edition: స్వయంకృషి సేవా ప్రస్థానం',
+    outlet: 'Andhra Jyothy',
+    outletType: 'Print & Newspapers',
+    date: '10/10/2026',
+    category: 'Regional Press',
+    badge: 'ANDHRA JYOTHY E-PAPER',
+    image: '',
+    isClipping: false,
+    excerpt: 'ఆంధ్రజ్యోతి ఉప్పల్-మల్కాజ్‌గిరి ఎడిషన్ కథనం: మూడున్నర దశాబ్దాలుగా మానసిక వికలాంగుల వికాసం, విద్యాబోధన, సంరక్షణ మరియు జీవనోపాధి కల్పిస్తున్న స్వయంకృషి సంస్థ.',
+    readTime: 'Telugu E-Paper',
+    tags: ['Andhra Jyothy', 'Uppal Malkajgiri', 'Telugu E-Paper', 'Special Education'],
+    articleUrl: 'https://epaper.andhrajyothy.com/Hyd_Uppal_Malkajgiri?eid=122&edate=10/10/2026&pgid=1524855&device=desktop&view=3',
+    featured: false,
+    order: 12
   }
 ]
 
@@ -720,6 +830,7 @@ export default function App() {
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadingStoryImage, setUploadingStoryImage] = useState(false)
+  const [uploadingStoryVideo, setUploadingStoryVideo] = useState(false)
   const [previewingVideo, setPreviewingVideo] = useState(null)
 
   // Interactive Circle Cropper Modal State
@@ -742,7 +853,7 @@ export default function App() {
     id: 'story-encounter',
     title: 'Chance Encounter That Changed My Life',
     category: "Director's Voice",
-    attribution: 'Ms Manjula Kalyan',
+    attribution: 'Ms Manjulaa Kalyaan',
     excerpt: 'A chance encounter with Dr Maria Egg-Benes, a renowned special educator from Switzerland, at a workshop in Bengaluru, turned out to be the turning point in my life, and a defining moment which revealed the path I was to take to serve the less fortunate in society.',
     contentHtml: '',
     paragraphs: [],
@@ -771,7 +882,7 @@ export default function App() {
           _id: match._id,
           title: match.title || '',
           category: match.category || "Director's Voice",
-          attribution: match.attribution || 'Ms Manjula Kalyan',
+          attribution: match.attribution || 'Ms Manjulaa Kalyaan',
           excerpt: match.excerpt || '',
           contentHtml: match.contentHtml || (match.paragraphs ? match.paragraphs.map((p) => `<p>${p}</p>`).join('') : ''),
           paragraphs: match.paragraphs || [],
@@ -1219,66 +1330,115 @@ export default function App() {
     const generatedThumb = getVideoThumbnailUrl(rawVideo)
     const mediaTypeDetermined = art.featuredMediaType || art.mediaType || (rawVideo ? 'video' : 'image')
 
-    // Extract or normalize all story images with captions
+    // Extract or normalize all story media (photos & videos) with captions
     let initialImages = []
-    if (Array.isArray(art.images) && art.images.length > 0) {
-      initialImages = art.images.map((img) => ({
-        url: typeof img === 'string' ? img : (img.url || ''),
-        caption: typeof img === 'object' ? (img.caption || img.alt || '') : '',
-        alt: typeof img === 'object' ? (img.alt || img.caption || '') : ''
-      }))
+    const hasExistingImagesArray = Array.isArray(art.images)
+    if (hasExistingImagesArray && art.images.length > 0) {
+      initialImages = art.images.map((img) => {
+        const url = typeof img === 'string' ? img.trim() : (img.url || '').trim()
+        const isVid = typeof img === 'object' && img.type ? img.type === 'video' : isVideoUrl(url)
+        // If caption property was defined on the object (including explicit empty string ""), respect it!
+        // Do NOT overwrite empty string with fallback.
+        const caption = typeof img === 'object' && img.caption !== undefined
+          ? img.caption
+          : (typeof img === 'object' && img.alt !== undefined ? img.alt : (getKnownCaption(url) || ''))
+        return {
+          url,
+          caption: caption || '',
+          alt: caption || '',
+          type: isVid ? 'video' : 'image'
+        }
+      }).filter((item) => item.url.length > 0)
     }
 
-    // ALSO check contentHtml for any additional images/figures and their captions
+    // Inspect contentHtml to find any embedded media that was NOT already in art.images
     if (initialHtml) {
       const parser = new DOMParser()
       const doc = parser.parseFromString(initialHtml, 'text/html')
       
+      // 1. Figures containing <img> or <video>
       const figures = Array.from(doc.querySelectorAll('figure'))
       figures.forEach((fig) => {
-        const imgEl = fig.querySelector('img')
+        const mediaEl = fig.querySelector('img, video')
+        if (!mediaEl) return
+        const isVid = mediaEl.tagName.toLowerCase() === 'video' || isVideoUrl(mediaEl.getAttribute('src'))
+        const src = (mediaEl.getAttribute('src') || mediaEl.querySelector('source')?.getAttribute('src') || '').trim()
         const figcap = fig.querySelector('figcaption')
-        const src = imgEl?.getAttribute('src')?.trim()
         if (src) {
           const existing = initialImages.find((x) => isSameImage(x.url, src))
-          const captionText = figcap?.textContent?.trim() || imgEl?.getAttribute('alt')?.trim() || ''
           if (!existing) {
+            const captionText = figcap?.textContent?.trim() || mediaEl.getAttribute('data-caption')?.trim() || mediaEl.getAttribute('alt')?.trim() || ''
             initialImages.push({
               url: src,
-              caption: captionText,
-              alt: imgEl?.getAttribute('alt')?.trim() || captionText
+              caption: captionText || getKnownCaption(src) || '',
+              alt: captionText || getKnownCaption(src) || '',
+              type: isVid ? 'video' : 'image'
             })
-          } else if (!existing.caption && captionText) {
-            existing.caption = captionText
           }
         }
       })
 
+      // 2. Standalone <video> tags not inside <figure>
+      const standaloneVideos = Array.from(doc.querySelectorAll('video'))
+      standaloneVideos.forEach((vidEl) => {
+        if (vidEl.closest('figure')) return
+        const src = (vidEl.getAttribute('src') || vidEl.querySelector('source')?.getAttribute('src') || '').trim()
+        if (src) {
+          const existing = initialImages.find((x) => isSameImage(x.url, src))
+          if (!existing) {
+            const captionText = vidEl.getAttribute('data-caption') || vidEl.getAttribute('title') || ''
+            initialImages.push({
+              url: src,
+              caption: captionText || getKnownCaption(src) || '',
+              alt: captionText || getKnownCaption(src) || '',
+              type: 'video'
+            })
+          }
+        }
+      })
+
+      // 3. Standalone <img> tags not inside <figure>
       const standaloneImgs = Array.from(doc.querySelectorAll('img'))
       standaloneImgs.forEach((imgEl) => {
         if (imgEl.closest('figure')) return
         const src = imgEl.getAttribute('src')?.trim()
         if (src) {
           const existing = initialImages.find((x) => isSameImage(x.url, src))
-          const altText = imgEl.getAttribute('alt')?.trim() || imgEl.getAttribute('title')?.trim() || ''
           if (!existing) {
+            const altText = imgEl.getAttribute('alt')?.trim() || imgEl.getAttribute('title')?.trim() || ''
             initialImages.push({
               url: src,
-              caption: altText,
-              alt: altText
+              caption: altText || getKnownCaption(src) || '',
+              alt: altText || getKnownCaption(src) || '',
+              type: 'image'
             })
-          } else if (!existing.caption && altText) {
-            existing.caption = altText
           }
         }
       })
     }
 
-    if (initialImages.length === 0) {
+    // Fallback to defaults only if art.images was NEVER defined and initialImages is empty
+    if (!hasExistingImagesArray && initialImages.length === 0) {
       const defaultImgs = DEFAULT_ARTICLE_IMAGES[art.id] || DEFAULT_ARTICLE_IMAGES[art._id]
       if (Array.isArray(defaultImgs) && defaultImgs.length > 0) {
-        initialImages = defaultImgs.map((img) => ({ ...img }))
+        initialImages = defaultImgs.map((img) => ({
+          ...img,
+          type: img.type || (isVideoUrl(img.url) ? 'video' : 'image'),
+          caption: img.caption || getKnownCaption(img.url) || ''
+        }))
       }
+    }
+
+    const activeCover = art.imageUrl || DEFAULT_ARTICLE_COVER_IMAGES[art.id] || DEFAULT_ARTICLE_COVER_IMAGES[art._id] || ''
+
+    // Determine correct caption for top cover / video:
+    // If art.imageAlt is explicitly defined in DB (including empty string ""), respect it!
+    // Only if art.imageAlt is undefined, fall back to default caption.
+    let activeCaption = ''
+    if (art.imageAlt !== undefined) {
+      activeCaption = art.imageAlt
+    } else {
+      activeCaption = DEFAULT_ARTICLE_CAPTIONS[art.id] || DEFAULT_ARTICLE_CAPTIONS[art._id] || ''
     }
 
     setArticleForm({
@@ -1292,13 +1452,11 @@ export default function App() {
       attribution: art.attribution || 'Swayamkrushi Archives',
       featuredMediaType: mediaTypeDetermined,
       mediaType: mediaTypeDetermined,
-      imageUrl: art.imageUrl || '',
+      imageUrl: activeCover,
       videoUrl: rawVideo,
       videoThumbnailUrl: art.videoThumbnailUrl || generatedThumb || '',
       videoPosterUrl: art.videoPosterUrl || '',
-      imageAlt: (art.imageAlt && art.imageAlt.trim())
-        ? art.imageAlt
-        : (DEFAULT_ARTICLE_CAPTIONS[art.id] || DEFAULT_ARTICLE_CAPTIONS[art._id] || ''),
+      imageAlt: activeCaption,
       images: initialImages,
       hasThumbnail: hasThumb,
       featured: !!art.featured,
@@ -1307,7 +1465,7 @@ export default function App() {
     setShowArticleModal(true)
   }
 
-  const handleUpdateStoryImageCaption = (index, newCaption) => {
+  const handleUpdateStoryMediaCaption = (index, newCaption) => {
     setArticleForm((prev) => {
       const nextImages = [...(prev.images || [])]
       if (nextImages[index]) {
@@ -1316,13 +1474,74 @@ export default function App() {
       return { ...prev, images: nextImages }
     })
   }
+  const handleUpdateStoryImageCaption = handleUpdateStoryMediaCaption
 
-  const handleRemoveStoryImage = (index) => {
-    setArticleForm((prev) => ({
-      ...prev,
-      images: (prev.images || []).filter((_, i) => i !== index)
-    }))
+  const handleRemoveStoryMedia = (index) => {
+    const removedItem = (articleForm.images || [])[index]
+    const removedUrl = typeof removedItem === 'string' ? removedItem : removedItem?.url
+
+    setArticleForm((prev) => {
+      const updatedImages = (prev.images || []).filter((_, i) => i !== index)
+      let nextHtml = prev.contentHtml || ''
+      if (nextHtml && removedUrl) {
+        try {
+          const parser = new DOMParser()
+          const doc = parser.parseFromString(nextHtml, 'text/html')
+          let changed = false
+
+          // Remove any <figure> containing this media
+          const figures = Array.from(doc.querySelectorAll('figure'))
+          figures.forEach((fig) => {
+            const mediaEl = fig.querySelector('img, video')
+            const src = (mediaEl?.getAttribute('src') || mediaEl?.querySelector('source')?.getAttribute('src') || '').trim()
+            if (src && (src === removedUrl || isSameImage(src, removedUrl))) {
+              fig.remove()
+              changed = true
+            }
+          })
+
+          // Remove standalone <img> or <video>
+          const standalones = Array.from(doc.querySelectorAll('img, video'))
+          standalones.forEach((el) => {
+            if (el.closest('figure')) return
+            const src = (el.getAttribute('src') || el.querySelector('source')?.getAttribute('src') || '').trim()
+            if (src && (src === removedUrl || isSameImage(src, removedUrl))) {
+              const parent = el.parentElement
+              el.remove()
+              changed = true
+              if (parent && (parent.tagName === 'P' || parent.tagName === 'DIV')) {
+                if (!parent.textContent?.trim() && parent.children.length === 0) {
+                  parent.remove()
+                }
+              }
+            }
+          })
+
+          if (changed) {
+            nextHtml = doc.body.innerHTML
+          }
+        } catch (err) {
+          console.error('Error stripping removed media from contentHtml:', err)
+        }
+      }
+
+      return {
+        ...prev,
+        images: updatedImages,
+        contentHtml: nextHtml
+      }
+    })
+
+    if (removedUrl && removedUrl.includes('cloudinary.com')) {
+      const resType = (removedItem?.type === 'video' || isVideoUrl(removedUrl)) ? 'video' : 'image'
+      deleteMediaFromCloudinary(removedUrl, resType).catch((err) =>
+        console.error('Failed to delete removed media from Cloudinary:', err)
+      )
+    }
+
+    showNotification('Media item permanently removed from article and Cloudinary.')
   }
+  const handleRemoveStoryImage = handleRemoveStoryMedia
 
   const handleUploadStoryImage = async (e) => {
     const file = e.target.files?.[0]
@@ -1334,7 +1553,7 @@ export default function App() {
         ...prev,
         images: [
           ...(prev.images || []),
-          { url, caption: '', alt: '' }
+          { url, caption: getKnownCaption(url), alt: '', type: 'image' }
         ]
       }))
       showNotification('Story photo added! You can now write its caption in the box below it.')
@@ -1346,32 +1565,77 @@ export default function App() {
     }
   }
 
-  const handleAddStoryImageUrl = () => {
-    const url = window.prompt('Enter Image URL (e.g. Cloudinary or web link):')
-    if (url && url.trim()) {
+  const handleUploadStoryVideo = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingStoryVideo(true)
+    try {
+      const url = await uploadMedia(file, 'video')
       setArticleForm((prev) => ({
         ...prev,
         images: [
           ...(prev.images || []),
-          { url: url.trim(), caption: '', alt: '' }
+          { url, caption: getKnownCaption(url), alt: '', type: 'video' }
+        ]
+      }))
+      showNotification('Story video added! You can now write its caption in the box below it.')
+    } catch (err) {
+      showNotification('Failed to upload video: ' + err.message, 'error')
+    } finally {
+      setUploadingStoryVideo(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleAddStoryImageUrl = () => {
+    const url = window.prompt('Enter Image URL (e.g. Cloudinary or web link):')
+    if (url && url.trim()) {
+      const cleanUrl = url.trim()
+      setArticleForm((prev) => ({
+        ...prev,
+        images: [
+          ...(prev.images || []),
+          { url: cleanUrl, caption: getKnownCaption(cleanUrl), alt: '', type: 'image' }
         ]
       }))
     }
   }
 
-  const handleEditStoryImageUrl = (index) => {
+  const handleAddStoryVideoUrl = () => {
+    const url = window.prompt('Enter Video URL (e.g. Cloudinary .mp4 or direct video link):')
+    if (url && url.trim()) {
+      const cleanUrl = url.trim()
+      setArticleForm((prev) => ({
+        ...prev,
+        images: [
+          ...(prev.images || []),
+          { url: cleanUrl, caption: getKnownCaption(cleanUrl), alt: '', type: 'video' }
+        ]
+      }))
+    }
+  }
+
+  const handleEditStoryMediaUrl = (index) => {
     const current = articleForm.images?.[index]?.url || ''
-    const next = window.prompt('Update Image URL:', current)
+    const next = window.prompt('Update Media URL:', current)
     if (next !== null && next.trim()) {
+      const cleanNext = next.trim()
       setArticleForm((prev) => {
         const nextImages = [...(prev.images || [])]
         if (nextImages[index]) {
-          nextImages[index] = { ...nextImages[index], url: next.trim() }
+          const isVid = isVideoUrl(cleanNext)
+          nextImages[index] = {
+            ...nextImages[index],
+            url: cleanNext,
+            type: isVid ? 'video' : 'image',
+            caption: nextImages[index].caption || getKnownCaption(cleanNext) || ''
+          }
         }
         return { ...prev, images: nextImages }
       })
     }
   }
+  const handleEditStoryImageUrl = handleEditStoryMediaUrl
 
   const handleSaveArticle = async (e) => {
     e.preventDefault()
@@ -1401,64 +1665,139 @@ export default function App() {
       const customPoster = isVideoType && articleForm.videoPosterUrl && articleForm.videoPosterUrl.trim().length > 5 ? articleForm.videoPosterUrl.trim() : ''
       const finalThumbnailUrl = isVideoType ? (articleForm.videoThumbnailUrl?.trim() || generatedThumb || '') : ''
 
-      // Synchronize image captions into contentHtml figures & images
+      // Synchronize image/video captions and purge removed media from contentHtml
       let finalContentHtml = articleForm.contentHtml || ''
-      if (finalContentHtml && Array.isArray(articleForm.images) && articleForm.images.length > 0) {
+      const cleanedImages = (articleForm.images || []).map((img) => {
+        const url = typeof img === 'string' ? img.trim() : (img.url || '').trim()
+        const isVid = typeof img === 'object' && img.type ? img.type === 'video' : isVideoUrl(url)
+        const cap = typeof img === 'object' && typeof img.caption === 'string' ? img.caption.trim() : ''
+        return {
+          url,
+          caption: cap,
+          alt: cap,
+          type: isVid ? 'video' : 'image'
+        }
+      }).filter((img) => img.url.length > 0)
+
+      if (finalContentHtml) {
         const parser = new DOMParser()
         const doc = parser.parseFromString(finalContentHtml, 'text/html')
         let changed = false
 
-        articleForm.images.forEach((imgObj) => {
-          if (!imgObj.url) return
-          const targetCaption = (imgObj.caption || '').trim()
-
-          // 1. Sync <figure> tags
-          const figures = Array.from(doc.querySelectorAll('figure'))
-          figures.forEach((fig) => {
-            const imgEl = fig.querySelector('img')
-            const src = imgEl?.getAttribute('src')?.trim()
-            if (src && (src === imgObj.url || isSameImage(src, imgObj.url))) {
-              let figcap = fig.querySelector('figcaption')
-              if (!figcap) {
-                figcap = doc.createElement('figcaption')
-                figcap.className = 'article-inline-caption'
-                fig.appendChild(figcap)
-              }
-              figcap.textContent = targetCaption
-              imgEl.setAttribute('alt', targetCaption || imgObj.alt || '')
-              changed = true
-            }
-          })
-
-          // 2. Sync standalone <img> tags (from Tiptap editor)
-          const standaloneImgs = Array.from(doc.querySelectorAll('img'))
-          standaloneImgs.forEach((imgEl) => {
-            if (imgEl.closest('figure')) return
-            const src = imgEl.getAttribute('src')?.trim()
-            if (src && (src === imgObj.url || isSameImage(src, imgObj.url))) {
-              imgEl.setAttribute('alt', targetCaption || imgObj.alt || '')
-              imgEl.setAttribute('title', targetCaption || imgObj.alt || '')
-              changed = true
-            }
-          })
+        // Purge figures not in cleanedImages
+        const figures = Array.from(doc.querySelectorAll('figure'))
+        figures.forEach((fig) => {
+          const mediaEl = fig.querySelector('img, video')
+          const src = (mediaEl?.getAttribute('src') || mediaEl?.querySelector('source')?.getAttribute('src') || '').trim()
+          if (!src || !cleanedImages.some((mObj) => isSameImage(mObj.url, src))) {
+            fig.remove()
+            changed = true
+          }
         })
+
+        // Purge standalone images and videos not in cleanedImages
+        const standaloneMedias = Array.from(doc.querySelectorAll('img, video'))
+        standaloneMedias.forEach((el) => {
+          if (el.closest('figure')) return
+          const src = (el.getAttribute('src') || el.querySelector('source')?.getAttribute('src') || '').trim()
+          if (!src || !cleanedImages.some((mObj) => isSameImage(mObj.url, src))) {
+            const parent = el.parentElement
+            el.remove()
+            changed = true
+            if (parent && (parent.tagName === 'P' || parent.tagName === 'DIV')) {
+              if (!parent.textContent?.trim() && parent.children.length === 0) {
+                parent.remove()
+              }
+            }
+          }
+        })
+
+        if (cleanedImages.length > 0) {
+          cleanedImages.forEach((mediaObj) => {
+            if (!mediaObj.url) return
+            const targetCaption = (mediaObj.caption || '').trim()
+
+            // 1. Sync <figure> tags containing img or video
+            const allFigures = Array.from(doc.querySelectorAll('figure'))
+            allFigures.forEach((fig) => {
+              const mediaEl = fig.querySelector('img, video')
+              const src = (mediaEl?.getAttribute('src') || mediaEl?.querySelector('source')?.getAttribute('src') || '').trim()
+              if (src && (src === mediaObj.url || isSameImage(src, mediaObj.url))) {
+                let figcap = fig.querySelector('figcaption')
+                if (targetCaption) {
+                  if (!figcap) {
+                    figcap = doc.createElement('figcaption')
+                    figcap.className = 'article-inline-caption'
+                    fig.appendChild(figcap)
+                  }
+                  figcap.textContent = targetCaption
+                } else if (figcap) {
+                  figcap.remove()
+                }
+                if (targetCaption) {
+                  mediaEl.setAttribute('alt', targetCaption)
+                } else {
+                  mediaEl.removeAttribute('alt')
+                }
+                if (mediaEl.tagName.toLowerCase() === 'video') {
+                  if (targetCaption) {
+                    mediaEl.setAttribute('data-caption', targetCaption)
+                    mediaEl.setAttribute('title', targetCaption)
+                  } else {
+                    mediaEl.removeAttribute('data-caption')
+                    mediaEl.removeAttribute('title')
+                  }
+                }
+                changed = true
+              }
+            })
+
+            // 2. Sync standalone <img> tags
+            const standaloneImgs = Array.from(doc.querySelectorAll('img'))
+            standaloneImgs.forEach((imgEl) => {
+              if (imgEl.closest('figure')) return
+              const src = imgEl.getAttribute('src')?.trim()
+              if (src && (src === mediaObj.url || isSameImage(src, mediaObj.url))) {
+                if (targetCaption) {
+                  imgEl.setAttribute('alt', targetCaption)
+                  imgEl.setAttribute('title', targetCaption)
+                } else {
+                  imgEl.removeAttribute('alt')
+                  imgEl.removeAttribute('title')
+                }
+                changed = true
+              }
+            })
+
+            // 3. Sync standalone <video> tags
+            const standaloneVideos = Array.from(doc.querySelectorAll('video'))
+            standaloneVideos.forEach((vidEl) => {
+              if (vidEl.closest('figure')) return
+              const src = (vidEl.getAttribute('src') || vidEl.querySelector('source')?.getAttribute('src') || '').trim()
+              if (src && (src === mediaObj.url || isSameImage(src, mediaObj.url))) {
+                if (targetCaption) {
+                  vidEl.setAttribute('data-caption', targetCaption)
+                  vidEl.setAttribute('title', targetCaption)
+                } else {
+                  vidEl.removeAttribute('data-caption')
+                  vidEl.removeAttribute('title')
+                }
+                changed = true
+              }
+            })
+          })
+        }
 
         if (changed) {
           finalContentHtml = doc.body.innerHTML
         }
       }
 
-      const cleanedImages = (articleForm.images || []).map((img) => ({
-        url: typeof img === 'string' ? img.trim() : (img.url || '').trim(),
-        caption: typeof img === 'object' ? (img.caption || '') : '',
-        alt: typeof img === 'object' ? (img.alt || img.caption || '') : ''
-      })).filter((img) => img.url.length > 0)
-
       const cleanedPayload = {
         ...articleForm,
         contentHtml: finalContentHtml,
         images: cleanedImages,
-        imageAlt: articleForm.imageAlt || '',
+        imageAlt: articleForm.imageAlt !== undefined ? articleForm.imageAlt.trim() : '',
         featuredMediaType: finalMediaType,
         mediaType: finalMediaType,
         videoUrl: rawVideo,
@@ -1568,7 +1907,7 @@ export default function App() {
       _id: art._id,
       title: art.title || '',
       category: art.category || "Director's Voice",
-      attribution: art.attribution || 'Ms Manjula Kalyan',
+      attribution: art.attribution || 'Ms Manjulaa Kalyaan',
       excerpt: art.excerpt || '',
       contentHtml: initialHtml,
       paragraphs: art.paragraphs && art.paragraphs.length ? art.paragraphs : [''],
@@ -1590,7 +1929,7 @@ export default function App() {
       id: newId,
       title: 'Direct Speak: New Column Entry',
       category: "Director's Voice",
-      attribution: 'Ms Manjula Kalyan, Founder & Director',
+      attribution: 'Ms Manjulaa Kalyaan, Founder & Director',
       excerpt: "Enter a short summary or reflection of this Director's Voice piece here...",
       contentHtml: '<h2>Direct Speak</h2><p>Write your direct reflection here...</p>',
       paragraphs: ['Write your direct reflection here...'],
@@ -2283,7 +2622,7 @@ export default function App() {
               onClick={() => setActiveTab('insiders')}
             >
               <Video size={18} className="admin-nav-icon" />
-              <span>Insider's Views ({insiders.length})</span>
+              <span>Insiders' Views ({insiders.length})</span>
             </button>
 
             <button
@@ -2442,7 +2781,7 @@ export default function App() {
                   </div>
                   <div className="admin-stat-info">
                     <span className="admin-stat-count">{insiders.length}</span>
-                    <span className="admin-stat-label">Insider's Views</span>
+                    <span className="admin-stat-label">Insiders' Views</span>
                   </div>
                   <span className="admin-stat-action">
                     Upload & Manage Videos <ChevronRight size={13} style={{ display: 'inline' }} />
@@ -3368,10 +3707,10 @@ export default function App() {
                             <td>
                               <strong className="admin-item-title">{art.title}</strong>
                               <p className="admin-item-snippet">{art.excerpt}</p>
-                              {(art.imageAlt || DEFAULT_ARTICLE_CAPTIONS[art.id] || DEFAULT_ARTICLE_CAPTIONS[art._id]) && (
+                              {((art.imageAlt !== undefined ? art.imageAlt : (DEFAULT_ARTICLE_CAPTIONS[art.id] || DEFAULT_ARTICLE_CAPTIONS[art._id]))) && (
                                 <p style={{ fontSize: '11px', color: '#6e1e38', fontStyle: 'italic', margin: '4px 0 0 0' }}>
                                   <strong style={{ fontStyle: 'normal', color: '#444' }}>Caption: </strong>
-                                  "{art.imageAlt || DEFAULT_ARTICLE_CAPTIONS[art.id] || DEFAULT_ARTICLE_CAPTIONS[art._id]}"
+                                  "{art.imageAlt !== undefined ? art.imageAlt : (DEFAULT_ARTICLE_CAPTIONS[art.id] || DEFAULT_ARTICLE_CAPTIONS[art._id])}"
                                 </p>
                               )}
                               <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -3569,7 +3908,7 @@ export default function App() {
                             type="text"
                             value={directSpeakForm.attribution}
                             onChange={(e) => setDirectSpeakForm((prev) => ({ ...prev, attribution: e.target.value }))}
-                            placeholder="e.g. Ms Manjula Kalyan, Founder & Director"
+                            placeholder="e.g. Ms Manjulaa Kalyaan, Founder & Director"
                             className="admin-input"
                           />
                         </div>
@@ -3805,7 +4144,7 @@ export default function App() {
                                 type="text"
                                 value={directSpeakForm.imageAlt}
                                 onChange={(e) => setDirectSpeakForm((prev) => ({ ...prev, imageAlt: e.target.value }))}
-                                placeholder="e.g. Ms Manjula Kalyan at Swayamkrushi"
+                                placeholder="e.g. Ms Manjulaa Kalyaan at Swayamkrushi"
                                 className="admin-input"
                                 style={{ fontSize: '12px' }}
                               />
@@ -3966,7 +4305,7 @@ export default function App() {
             <div className="admin-tab-content">
               <div className="admin-content-header">
                 <div>
-                  <h1 className="admin-section-title">Insider's Views & Testimonials</h1>
+                  <h1 className="admin-section-title">Insiders' Views & Testimonials</h1>
                   <p className="admin-section-desc">
                     Manage speaker video stories, testimonials, custom thumbnails, quotes, and timestamps displayed on the Insiders Wall.
                   </p>
@@ -5355,27 +5694,53 @@ export default function App() {
                       />
                     </div>
                     {uploadingImage && <p className="admin-uploading-text">Uploading image to Cloudinary...</p>}
-                    {articleForm.imageUrl && (
+                    {(articleForm.imageUrl || DEFAULT_ARTICLE_COVER_IMAGES[articleForm.id] || DEFAULT_ARTICLE_COVER_IMAGES[articleForm._id]) && (
                       <div className="admin-img-preview-box">
-                        <div className="admin-preview-img-wrapper">
-                          <img src={articleForm.imageUrl} alt="Cover Preview" className="admin-preview-img" />
+                        <div className="admin-preview-img-wrapper" style={{ position: 'relative' }}>
+                          <img
+                            src={articleForm.imageUrl || DEFAULT_ARTICLE_COVER_IMAGES[articleForm.id] || DEFAULT_ARTICLE_COVER_IMAGES[articleForm._id]}
+                            alt="Cover Preview"
+                            className="admin-preview-img"
+                            onError={(e) => { e.currentTarget.style.display = 'none' }}
+                          />
+                          {!articleForm.imageUrl && (DEFAULT_ARTICLE_COVER_IMAGES[articleForm.id] || DEFAULT_ARTICLE_COVER_IMAGES[articleForm._id]) && (
+                            <span style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(42, 157, 143, 0.9)', color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '3px', fontWeight: 600 }}>
+                              Default Archive Cover
+                            </span>
+                          )}
+                          {articleForm.imageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setArticleForm((prev) => ({ ...prev, imageUrl: '' }))}
+                              className="admin-img-remove-btn-corner"
+                              title="Remove custom cover image (✕)"
+                              aria-label="Remove image"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                        {articleForm.imageUrl ? (
                           <button
                             type="button"
                             onClick={() => setArticleForm((prev) => ({ ...prev, imageUrl: '' }))}
-                            className="admin-img-remove-btn-corner"
-                            title="Remove cover image (✕)"
-                            aria-label="Remove image"
+                            className="admin-btn-remove-img"
                           >
-                            <X size={12} />
+                            Remove Custom Photo
                           </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setArticleForm((prev) => ({ ...prev, imageUrl: '' }))}
-                          className="admin-btn-remove-img"
-                        >
-                          Remove Photo
-                        </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setArticleForm((prev) => ({
+                              ...prev,
+                              imageUrl: DEFAULT_ARTICLE_COVER_IMAGES[prev.id] || DEFAULT_ARTICLE_COVER_IMAGES[prev._id] || ''
+                            }))}
+                            className="admin-btn-secondary"
+                            style={{ fontSize: '11px', padding: '4px 8px', marginTop: '6px' }}
+                          >
+                            Set Default as Custom URL
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -5401,18 +5766,18 @@ export default function App() {
                 </span>
               </div>
 
-              {/* 🖼️ STORY PHOTOS & INDIVIDUAL IMAGE CAPTIONS */}
+              {/* 🖼️ STORY MEDIA (PHOTOS & VIDEOS) & INDIVIDUAL CAPTIONS */}
               <div className="admin-form-group" style={{ background: '#fdfbf7', border: '1px solid #ebd9c8', borderRadius: '8px', padding: '16px', marginTop: '6px', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                   <div>
                     <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#3d342f', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <FileImage size={16} color="#6e1e38" /> Story Photos & Individual Image Captions
+                      <FileImage size={16} color="#6e1e38" /> Story Media & Individual Captions (Photos & Videos)
                     </h4>
                     <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#776e65' }}>
-                      Every image has its own caption box directly beneath it. You can edit any caption or add new photos below.
+                      Every photo and video has its own dedicated caption box directly beneath it. You can edit any caption, upload new photos or videos, or add URLs below.
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <label className="admin-btn-secondary" style={{ cursor: 'pointer', margin: 0, fontSize: '12px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                       <Upload size={14} /> + Upload Photo
                       <input
@@ -5423,108 +5788,160 @@ export default function App() {
                         disabled={uploadingStoryImage}
                       />
                     </label>
+                    <label className="admin-btn-secondary" style={{ cursor: 'pointer', margin: 0, fontSize: '12px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#3d342f', color: '#ffffff' }}>
+                      <Video size={14} /> + Upload Video
+                      <input
+                        type="file"
+                        accept="video/*"
+                        style={{ display: 'none' }}
+                        onChange={handleUploadStoryVideo}
+                        disabled={uploadingStoryVideo}
+                      />
+                    </label>
                     <button
                       type="button"
                       className="admin-btn-secondary"
                       style={{ fontSize: '12px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                       onClick={handleAddStoryImageUrl}
                     >
-                      <Plus size={14} /> + Add Image URL
+                      <Plus size={14} /> + Add Photo URL
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-btn-secondary"
+                      style={{ fontSize: '12px', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                      onClick={handleAddStoryVideoUrl}
+                    >
+                      <Plus size={14} /> + Add Video URL
                     </button>
                   </div>
                 </div>
 
-                {uploadingStoryImage && (
+                {(uploadingStoryImage || uploadingStoryVideo) && (
                   <p style={{ fontSize: '12px', color: '#6e1e38', fontWeight: 600, margin: '8px 0' }}>
-                    Uploading story photo to Cloudinary CDN...
+                    {uploadingStoryImage ? 'Uploading story photo to Cloudinary CDN...' : 'Uploading story video to Cloudinary CDN (this may take a few moments)...'}
                   </p>
                 )}
 
                 {(!articleForm.images || articleForm.images.length === 0) ? (
                   <div style={{ textAlign: 'center', padding: '24px 12px', background: '#fff', border: '1px dashed #d7ccc8', borderRadius: '6px' }}>
                     <FileImage size={28} color="#bcaaa4" style={{ margin: '0 auto 6px', display: 'block' }} />
-                    <p style={{ margin: 0, fontSize: '13px', color: '#776e65' }}>No additional story photos added yet.</p>
-                    <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9e9087' }}>Click <strong>+ Upload Photo</strong> or <strong>+ Add Image URL</strong> above to add photos with individual captions.</p>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#776e65' }}>No additional story media added yet.</p>
+                    <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9e9087' }}>Click <strong>+ Upload Photo</strong>, <strong>+ Upload Video</strong>, or <strong>+ Add URL</strong> above to add photos and videos with captions.</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
-                    {articleForm.images.map((imgItem, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          background: '#ffffff',
-                          border: '1px solid #e0d7ce',
-                          borderRadius: '6px',
-                          overflow: 'hidden',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-                        }}
-                      >
-                        {/* Photo Thumbnail */}
-                        <div style={{ position: 'relative', height: '160px', background: '#f5f0eb' }}>
-                          <img
-                            src={imgItem.url}
-                            alt={imgItem.caption || `Story photo ${idx + 1}`}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                            onError={(e) => { e.currentTarget.style.display = 'none' }}
-                          />
-                          <div style={{ position: 'absolute', top: '6px', left: '6px', background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: '11px', fontWeight: 600, padding: '2px 7px', borderRadius: '4px' }}>
-                            Photo #{idx + 1}
-                          </div>
-                          <div style={{ position: 'absolute', top: '6px', right: '6px', display: 'flex', gap: '4px' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleEditStoryImageUrl(idx)}
-                              style={{ background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                              title="Edit Image URL"
-                            >
-                              <Edit3 size={13} color="#3d342f" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveStoryImage(idx)}
-                              style={{ background: 'rgba(110, 30, 56, 0.92)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                              title="Delete this photo"
-                            >
-                              <X size={13} color="#ffffff" />
-                            </button>
-                          </div>
-                        </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '14px' }}>
+                    {articleForm.images.map((mediaItem, idx) => {
+                      const isVid = mediaItem.type === 'video' || isVideoUrl(mediaItem.url)
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            background: '#ffffff',
+                            border: isVid ? '1.5px solid #2a9d8f' : '1px solid #e0d7ce',
+                            borderRadius: '6px',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                          }}
+                        >
+                          {/* Media Preview Box */}
+                          <div style={{ position: 'relative', height: '170px', background: '#1c1917' }}>
+                            {isVid ? (
+                              <video
+                                src={mediaItem.url}
+                                controls
+                                muted
+                                playsInline
+                                preload="metadata"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                              />
+                            ) : (
+                              <img
+                                src={mediaItem.url}
+                                alt={mediaItem.caption || `Story photo ${idx + 1}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                              />
+                            )}
 
-                        {/* Dedicated Caption Input Box DIRECTLY BELOW this photo */}
-                        <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, background: '#faf8f5', borderTop: '1px solid #ebd9c8' }}>
-                          <label style={{ fontSize: '11px', fontWeight: 700, color: '#4a3f35', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span>Caption for Photo #{idx + 1}:</span>
-                          </label>
-                          <textarea
-                            rows={2}
-                            value={imgItem.caption || ''}
-                            onChange={(e) => handleUpdateStoryImageCaption(idx, e.target.value)}
-                            placeholder={`Enter caption describing photo #${idx + 1}...`}
-                            className="admin-input"
-                            style={{
-                              fontSize: '12px',
-                              padding: '7px 9px',
-                              minHeight: '52px',
-                              resize: 'vertical',
-                              background: '#ffffff',
-                              border: '1px solid #cbbaa8',
-                              borderRadius: '4px',
-                              lineHeight: 1.35
-                            }}
-                          />
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#887b70' }}>
-                            <span title={imgItem.url} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>
-                              {imgItem.url ? imgItem.url.split('/').pop() : 'No URL'}
-                            </span>
-                            <a href={imgItem.url} target="_blank" rel="noreferrer" style={{ color: '#6e1e38', textDecoration: 'underline' }}>
-                              View full
-                            </a>
+                            {/* Badge */}
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: '6px',
+                                left: '6px',
+                                background: isVid ? 'rgba(42, 157, 143, 0.92)' : 'rgba(0,0,0,0.68)',
+                                color: '#fff',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              {isVid ? <Video size={12} /> : <FileImage size={12} />}
+                              {isVid ? `Video #${idx + 1}` : `Photo #${idx + 1}`}
+                            </div>
+
+                            {/* Corner action buttons */}
+                            <div style={{ position: 'absolute', top: '6px', right: '6px', display: 'flex', gap: '4px' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleEditStoryMediaUrl(idx)}
+                                style={{ background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                title="Edit URL"
+                              >
+                                <Edit3 size={13} color="#3d342f" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveStoryMedia(idx)}
+                                style={{ background: 'rgba(110, 30, 56, 0.92)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                title="Delete this item"
+                              >
+                                <X size={13} color="#ffffff" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Dedicated Caption Input Box DIRECTLY BELOW this media */}
+                          <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, background: '#faf8f5', borderTop: '1px solid #ebd9c8' }}>
+                            <label style={{ fontSize: '11px', fontWeight: 700, color: '#4a3f35', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span>Caption for {isVid ? 'Video' : 'Photo'} #{idx + 1}:</span>
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={mediaItem.caption || ''}
+                              onChange={(e) => handleUpdateStoryMediaCaption(idx, e.target.value)}
+                              placeholder={`Enter caption describing ${isVid ? 'video' : 'photo'} #${idx + 1}...`}
+                              className="admin-input"
+                              style={{
+                                fontSize: '12px',
+                                padding: '7px 9px',
+                                minHeight: '52px',
+                                resize: 'vertical',
+                                background: '#ffffff',
+                                border: '1px solid #cbbaa8',
+                                borderRadius: '4px',
+                                lineHeight: 1.35
+                              }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#887b70' }}>
+                              <span title={mediaItem.url} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }}>
+                                {mediaItem.url ? mediaItem.url.split('/').pop() : 'No URL'}
+                              </span>
+                              <a href={mediaItem.url} target="_blank" rel="noreferrer" style={{ color: '#6e1e38', textDecoration: 'underline' }}>
+                                View full
+                              </a>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -5962,7 +6379,7 @@ export default function App() {
                       required
                       value={insiderForm.name}
                       onChange={(e) => setInsiderForm({ ...insiderForm, name: e.target.value })}
-                      placeholder="e.g. Ms Manjula Kalyan"
+                      placeholder="e.g. Ms Manjulaa Kalyaan"
                       className="admin-input"
                     />
                   </div>

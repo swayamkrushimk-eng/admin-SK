@@ -229,3 +229,10 @@ export function isSameImage(url1, url2) {
   if (matchA && matchB && matchA[1] === matchB[1]) return true
   return false
 }
+
+export function isVideoUrl(url) {
+  if (!url || typeof url !== 'string') return false
+  const clean = url.trim().toLowerCase()
+  if (clean.includes('/video/upload/')) return true
+  return /\.(mp4|webm|mov|m4v|ogg|ogv)$/i.test(clean)
+}
