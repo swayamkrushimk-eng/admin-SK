@@ -801,6 +801,8 @@ export default function App() {
     title: '',
     caption: '',
     imageUrl: '',
+    mediaType: 'image',
+    videoThumbnailUrl: '',
     order: 0
   })
 
@@ -2147,28 +2149,57 @@ export default function App() {
     }
   }
 
+  const handleEventMediaUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v|ogg|mkv)$/i.test(file.name)
+    const setBusy = isVideo ? setUploadingVideo : setUploadingImage
+    setBusy(true)
+    try {
+      const uploadedUrl = isVideo ? await uploadMedia(file, 'video') : await uploadImage(file)
+      setEventImageForm((prev) => ({
+        ...prev,
+        imageUrl: uploadedUrl,
+        mediaType: isVideo ? 'video' : 'image',
+        videoThumbnailUrl: isVideo ? (getVideoThumbnailUrl(uploadedUrl) || '') : ''
+      }))
+      showNotification(isVideo ? 'Video uploaded to Cloudinary successfully!' : 'Image uploaded to Cloudinary successfully!')
+    } catch (err) {
+      showNotification((isVideo ? 'Video' : 'Image') + ' upload failed: ' + err.message, 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const handleSaveEventImage = async (e) => {
     e.preventDefault()
     try {
-      await createEventImage(eventImageForm)
-      showNotification('Event photo added to the gallery!')
+      const isVideo = eventImageForm.mediaType === 'video' || isVideoUrl(eventImageForm.imageUrl)
+      await createEventImage({
+        ...eventImageForm,
+        mediaType: isVideo ? 'video' : 'image',
+        videoThumbnailUrl: isVideo
+          ? (eventImageForm.videoThumbnailUrl || getVideoThumbnailUrl(eventImageForm.imageUrl) || '')
+          : ''
+      })
+      showNotification(isVideo ? 'Event video added to the gallery!' : 'Event photo added to the gallery!')
       setShowEventModal(false)
-      setEventImageForm({ title: '', caption: '', imageUrl: '', order: 0 })
+      setEventImageForm({ title: '', caption: '', imageUrl: '', mediaType: 'image', videoThumbnailUrl: '', order: 0 })
       const refreshed = await fetchEventImages()
       setEventImages(Array.isArray(refreshed) ? refreshed : [])
     } catch (err) {
-      showNotification('Failed to add event photo: ' + err.message, 'error')
+      showNotification('Failed to add event media: ' + err.message, 'error')
     }
   }
 
   const handleDeleteEventImage = async (id, title) => {
-    if (!window.confirm(`Delete event photo "${title || 'this image'}"?`)) return
+    if (!window.confirm(`Delete "${title || 'this gallery item'}"?`)) return
     try {
       await deleteEventImage(id)
-      showNotification('Event photo deleted')
+      showNotification('Event gallery item deleted')
       setEventImages((prev) => prev.filter((item) => item._id !== id && item.id !== id))
     } catch (err) {
-      showNotification('Failed to delete event photo: ' + err.message, 'error')
+      showNotification('Failed to delete gallery item: ' + err.message, 'error')
     }
   }
 
@@ -4777,49 +4808,72 @@ export default function App() {
                 <div>
                   <h1 className="admin-section-title">Event Gallery</h1>
                   <p className="admin-section-desc">
-                    Upload photos that appear on the public Events Gallery page at /#/events.
+                    Upload photos and videos that appear on the public Events Gallery page at /#/events.
                   </p>
                 </div>
                 <button
                   onClick={() => {
-                    setEventImageForm({ title: '', caption: '', imageUrl: '', order: eventImages.length + 1 })
+                    setEventImageForm({
+                      title: '',
+                      caption: '',
+                      imageUrl: '',
+                      mediaType: 'image',
+                      videoThumbnailUrl: '',
+                      order: eventImages.length + 1
+                    })
                     setShowEventModal(true)
                   }}
                   className="admin-btn admin-btn-primary"
                 >
                   <Upload size={15} />
-                  <span>Upload Event Photo</span>
+                  <span>Upload Photo or Video</span>
                 </button>
               </div>
 
               {eventImages.length === 0 ? (
                 <div className="admin-empty-state">
                   <Images size={40} color="#8c8278" style={{ marginBottom: '12px' }} />
-                  <h3>No Event Photos Yet</h3>
-                  <p>Upload images here and they will show on the Events Gallery page of the site.</p>
+                  <h3>No Event Media Yet</h3>
+                  <p>Upload images or videos here and they will show on the Events Gallery page of the site.</p>
                 </div>
               ) : (
                 <div className="admin-media-grid">
-                  {eventImages.map((item) => (
-                    <div key={item._id || item.id} className="admin-media-card">
-                      <div className="admin-media-thumb-wrap">
-                        <img src={item.imageUrl} alt={item.title || 'Event photo'} className="admin-media-img" />
+                  {eventImages.map((item) => {
+                    const src = item.imageUrl || item.url || ''
+                    const isVideo = item.mediaType === 'video' || isVideoUrl(src)
+                    const thumb = item.videoThumbnailUrl || getVideoThumbnailUrl(src) || src
+                    return (
+                      <div key={item._id || item.id} className="admin-media-card">
+                        <div className="admin-media-thumb-wrap">
+                          {isVideo ? (
+                            <>
+                              {thumb ? (
+                                <img src={thumb} alt={item.title || 'Event video'} className="admin-media-img" />
+                              ) : (
+                                <video src={src} className="admin-media-img" muted preload="metadata" />
+                              )}
+                              <span className="admin-media-play-badge">▶</span>
+                            </>
+                          ) : (
+                            <img src={src} alt={item.title || 'Event photo'} className="admin-media-img" />
+                          )}
+                        </div>
+                        <div className="admin-media-info">
+                          <h4 className="admin-media-title">{item.title || (isVideo ? 'Event video' : 'Event photo')}</h4>
+                          {item.caption && <p className="admin-media-caption">{item.caption}</p>}
+                        </div>
+                        <div className="admin-media-actions">
+                          <button
+                            onClick={() => handleDeleteEventImage(item._id || item.id, item.title)}
+                            className="admin-btn-action admin-btn-delete"
+                          >
+                            <Trash2 size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                      <div className="admin-media-info">
-                        <h4 className="admin-media-title">{item.title || 'Event photo'}</h4>
-                        {item.caption && <p className="admin-media-caption">{item.caption}</p>}
-                      </div>
-                      <div className="admin-media-actions">
-                        <button
-                          onClick={() => handleDeleteEventImage(item._id || item.id, item.title)}
-                          className="admin-btn-action admin-btn-delete"
-                        >
-                          <Trash2 size={13} style={{ display: 'inline', marginRight: '4px' }} />
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -6381,7 +6435,7 @@ export default function App() {
         <div className="admin-modal-overlay">
           <div className="admin-modal">
             <div className="admin-modal-header">
-              <h2>Upload Event Gallery Photo</h2>
+              <h2>Upload Event Photo or Video</h2>
               <button onClick={() => setShowEventModal(false)} className="admin-modal-close">
                 <X size={20} />
               </button>
@@ -6389,7 +6443,7 @@ export default function App() {
 
             <form onSubmit={handleSaveEventImage}>
               <div className="admin-form-group">
-                <label>Photo Title</label>
+                <label>Title</label>
                 <input
                   type="text"
                   value={eventImageForm.title}
@@ -6411,35 +6465,59 @@ export default function App() {
               </div>
 
               <div className="admin-form-group">
-                <label>Event Photo *</label>
+                <label>Event Photo or Video *</label>
                 <div className="admin-image-picker-row">
                   <input
                     type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileUpload(e, setEventImageForm, 'imageUrl')}
+                    accept="image/*,video/*"
+                    onChange={handleEventMediaUpload}
                     className="admin-file-input"
-                    disabled={uploadingImage}
+                    disabled={uploadingImage || uploadingVideo}
                   />
                   <span className="admin-or-divider">OR</span>
                   <input
                     type="text"
-                    placeholder="Image URL"
+                    placeholder="Image or video URL"
                     value={eventImageForm.imageUrl}
-                    onChange={(e) => setEventImageForm({ ...eventImageForm, imageUrl: e.target.value })}
+                    onChange={(e) => {
+                      const url = e.target.value
+                      const isVideo = isVideoUrl(url)
+                      setEventImageForm({
+                        ...eventImageForm,
+                        imageUrl: url,
+                        mediaType: isVideo ? 'video' : 'image',
+                        videoThumbnailUrl: isVideo ? (getVideoThumbnailUrl(url) || '') : ''
+                      })
+                    }}
                     className="admin-input"
                     required
                   />
                 </div>
+                {(uploadingImage || uploadingVideo) && (
+                  <p className="admin-uploading-text">
+                    {uploadingVideo ? 'Uploading video to Cloudinary…' : 'Uploading image to Cloudinary…'}
+                  </p>
+                )}
                 {eventImageForm.imageUrl && (
                   <div className="admin-img-preview-box">
                     <div className="admin-preview-img-wrapper">
-                      <img src={eventImageForm.imageUrl} alt="Preview" className="admin-preview-img" />
+                      {eventImageForm.mediaType === 'video' || isVideoUrl(eventImageForm.imageUrl) ? (
+                        <video
+                          src={getDeliveryVideoUrl(eventImageForm.imageUrl) || eventImageForm.imageUrl}
+                          className="admin-preview-img"
+                          controls
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <img src={eventImageForm.imageUrl} alt="Preview" className="admin-preview-img" />
+                      )}
                       <button
                         type="button"
-                        onClick={() => setEventImageForm((prev) => ({ ...prev, imageUrl: '' }))}
+                        onClick={() => setEventImageForm((prev) => ({ ...prev, imageUrl: '', mediaType: 'image', videoThumbnailUrl: '' }))}
                         className="admin-img-remove-btn-corner"
-                        title="Remove photo"
-                        aria-label="Remove image"
+                        title="Remove media"
+                        aria-label="Remove media"
                       >
                         <X size={12} />
                       </button>
@@ -6456,9 +6534,13 @@ export default function App() {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="admin-btn admin-btn-primary" disabled={uploadingImage || !eventImageForm.imageUrl}>
+                <button
+                  type="submit"
+                  className="admin-btn admin-btn-primary"
+                  disabled={uploadingImage || uploadingVideo || !eventImageForm.imageUrl}
+                >
                   <Upload size={15} />
-                  <span>{uploadingImage ? 'Uploading…' : 'Save to Gallery'}</span>
+                  <span>{uploadingImage || uploadingVideo ? 'Uploading…' : 'Save to Gallery'}</span>
                 </button>
               </div>
             </form>
