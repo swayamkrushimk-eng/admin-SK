@@ -1032,7 +1032,11 @@ export default function App() {
       }
 
       if (mediaData && mediaData.length > 0) {
-        setMediaBuzzItems(mediaData)
+        const validData = mediaData.filter((a) => a.title && a.title.trim())
+        const dataIds = new Set(validData.map((a) => a.id))
+        const missingDefaults = DEFAULT_MEDIA_ARTICLES.filter((a) => !dataIds.has(a.id))
+        const merged = [...validData, ...missingDefaults].sort((a, b) => (a.order || 0) - (b.order || 0))
+        setMediaBuzzItems(merged)
       } else {
         const local = localStorage.getItem('swayamkrushi_media_buzz')
         if (local) {
