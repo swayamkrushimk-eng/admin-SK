@@ -727,6 +727,49 @@ body, html {
   pointer-events: none;
 }
 
+.admin-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-event-album {
+  background: #fff;
+  border: 1px solid #e6dfd3;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.admin-event-album-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.admin-event-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.admin-event-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #eee8dc;
+}
+
+.admin-event-thumb img,
+.admin-event-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .admin-media-img {
   width: 100%;
   height: 100%;

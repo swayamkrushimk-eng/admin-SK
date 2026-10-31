@@ -287,7 +287,18 @@ export async function createEventImage(data) {
     body: JSON.stringify(data)
   })
   const resData = await res.json()
-  if (!res.ok) throw new Error(resData.error || 'Failed to add event image')
+  if (!res.ok) throw new Error(resData.error || 'Failed to add event')
+  return resData
+}
+
+export async function updateEventImage(id, data) {
+  const res = await fetch(`${API_BASE_URL}/events/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  const resData = await res.json()
+  if (!res.ok) throw new Error(resData.error || 'Failed to update event')
   return resData
 }
 
@@ -296,7 +307,7 @@ export async function deleteEventImage(id) {
     method: 'DELETE'
   })
   const resData = await res.json()
-  if (!res.ok) throw new Error(resData.error || 'Failed to delete event image')
+  if (!res.ok) throw new Error(resData.error || 'Failed to delete event')
   return resData
 }
 
