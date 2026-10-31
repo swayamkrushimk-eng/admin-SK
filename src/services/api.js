@@ -432,7 +432,40 @@ export async function deleteInsider(id) {
 }
 
 // ─── CLOUDINARY DIRECT MEDIA UPLOAD HELPER (Images & Videos) ────────────────
+const CLOUDINARY_IMAGE_MAX_BYTES = 10 * 1024 * 1024 // Free/basic Cloudinary image limit
+
+function formatUploadError(data, fallback) {
+  const details = typeof data?.details === 'string' ? data.details : ''
+  const base = data?.error || fallback
+  if (!details || details === base) return base
+  return `${base}: ${details}`
+}
+
+function assertImageSize(file) {
+  if (file?.size > CLOUDINARY_IMAGE_MAX_BYTES) {
+    const mb = (file.size / (1024 * 1024)).toFixed(1)
+    throw new Error(
+      `Image is too large (${mb} MB). Cloudinary allows up to 10 MB — compress or resize the image, then try again.`
+    )
+  }
+}
+
+function inferResourceType(file, resourceType) {
+  if (resourceType === 'image' || resourceType === 'video') return resourceType
+  if (file?.type?.startsWith('video/')) return 'video'
+  if (file?.type?.startsWith('image/')) return 'image'
+  const ext = file?.name ? file.name.toLowerCase().split('.').pop() : ''
+  if (['mp4', 'webm', 'mov', 'm4v', 'avi', 'mkv', 'ogg', '3gp', 'flv', 'wmv', 'ts'].includes(ext)) {
+    return 'video'
+  }
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg', 'avif'].includes(ext)) {
+    return 'image'
+  }
+  return 'auto'
+}
+
 export async function uploadImage(file) {
+  assertImageSize(file)
   const formData = new FormData()
   formData.append('file', file)
   formData.append('resourceType', 'image')
@@ -443,15 +476,18 @@ export async function uploadImage(file) {
   })
   const data = await res.json()
   if (!res.ok || !data.success) {
-    throw new Error(data.error || 'Image upload failed')
+    throw new Error(formatUploadError(data, 'Image upload failed'))
   }
   return data.url
 }
 
-export async function uploadMedia(file, resourceType = 'video') {
+export async function uploadMedia(file, resourceType) {
+  const inferred = inferResourceType(file, resourceType)
+  if (inferred === 'image') assertImageSize(file)
+
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('resourceType', resourceType)
+  formData.append('resourceType', inferred)
 
   const res = await fetch(`${API_BASE_URL}/upload`, {
     method: 'POST',
@@ -459,7 +495,7 @@ export async function uploadMedia(file, resourceType = 'video') {
   })
   const data = await res.json()
   if (!res.ok || !data.success) {
-    throw new Error(data.error || 'Media upload failed')
+    throw new Error(formatUploadError(data, 'Media upload failed'))
   }
   return data.url
 }

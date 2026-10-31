@@ -95,6 +95,7 @@ export const VideoExtension = Node.create({
 export default function TiptapEditor({ content, onChange, placeholder = 'Start writing your story or article here...' }) {
   const imageFileInputRef = useRef(null)
   const videoFileInputRef = useRef(null)
+  const lastEmittedHtmlRef = useRef('')
 
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [isUploadingVideo, setIsUploadingVideo] = useState(false)
@@ -109,8 +110,8 @@ export default function TiptapEditor({ content, onChange, placeholder = 'Start w
         }
       }),
       Image.configure({
-        inline: true,
-        allowBase64: true
+        inline: false,
+        allowBase64: false
       }),
       VideoExtension,
       Link.configure({
@@ -134,22 +135,26 @@ export default function TiptapEditor({ content, onChange, placeholder = 'Start w
       })
     ],
     content: content || '',
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML()
+    onUpdate: ({ editor: ed }) => {
+      const html = ed.getHTML()
+      lastEmittedHtmlRef.current = html
       if (onChange) {
         onChange(html)
       }
     }
   })
 
-  // Sync content when prop changes from outside (e.g. switching articles or edit modal open)
+  // Sync content only when parent changes it from outside (not from our own onUpdate)
   useEffect(() => {
     if (!editor) return
-    const currentHtml = editor.getHTML()
     const targetHtml = content || ''
-    if (targetHtml !== currentHtml) {
-      editor.commands.setContent(targetHtml)
+    if (targetHtml === lastEmittedHtmlRef.current) return
+    if (targetHtml === editor.getHTML()) {
+      lastEmittedHtmlRef.current = targetHtml
+      return
     }
+    editor.commands.setContent(targetHtml, { emitUpdate: false })
+    lastEmittedHtmlRef.current = editor.getHTML()
   }, [content, editor])
 
   // Insert link
@@ -227,22 +232,10 @@ export default function TiptapEditor({ content, onChange, placeholder = 'Start w
         width: 640,
         height: 360
       })
-
-  // Sync content when prop changes from outside (e.g. switching articles or edit modal open)
-  useEffect(() => {
-    if (!editor) return
-    const currentHtml = editor.getHTML()
-    const targetHtml = content || ''
-    if (targetHtml !== currentHtml) {
-      editor.commands.setContent(targetHtml)
-    }
-  }, [content, editor])
+    } else if (editor.commands.setVideo) {
+      editor.chain().focus().setVideo({ src: url }).run()
     } else {
-      if (editor.commands.setVideo) {
-        editor.chain().focus().setVideo({ src: url }).run()
-      } else {
-        editor.chain().focus().insertContent(`<video src="${url}" controls style="max-width:100%; border-radius:8px; margin:20px auto; display:block;" playsinline></video><p></p>`).run()
-      }
+      editor.chain().focus().insertContent(`<video src="${url}" controls style="max-width:100%; border-radius:8px; margin:20px auto; display:block;" playsinline></video><p></p>`).run()
     }
   }, [editor])
 

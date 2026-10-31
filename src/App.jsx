@@ -111,7 +111,8 @@ import {
   getVideoThumbnailUrl,
   getDeliveryVideoUrl,
   resolveArticleMedia,
-  isVideoUrl
+  isVideoUrl,
+  sanitizeImageUrl
 } from './utils/mediaUtils'
 import defaultBirthdayCourtyard from './assets/images/birthday-courtyard.jpg'
 
@@ -1141,7 +1142,7 @@ export default function App() {
     if (!file) return
     setUploadingThumbnail(true)
     try {
-      const url = await uploadMedia(file)
+      const url = await uploadImage(file)
       setInsiderForm((prev) => ({ ...prev, thumbnail: url }))
       showNotification('Thumbnail image uploaded to Cloudinary!')
     } catch (err) {
@@ -1705,10 +1706,11 @@ export default function App() {
         }
       }).filter((img) => img.url.length > 0)
 
-      if (finalContentHtml) {
+      // Always run DOM sync when there is body HTML and/or story media to persist
+      if (finalContentHtml || cleanedImages.length > 0) {
         const parser = new DOMParser()
-        const doc = parser.parseFromString(finalContentHtml, 'text/html')
-        let changed = false
+        const doc = parser.parseFromString(finalContentHtml || '<p></p>', 'text/html')
+        let changed = Boolean(!finalContentHtml && cleanedImages.length > 0)
 
         // 1. First, collect any media embedded in contentHtml so they are recognized in cleanedImages and NEVER purged
         const inHtmlMedia = Array.from(doc.querySelectorAll('img, video'))
