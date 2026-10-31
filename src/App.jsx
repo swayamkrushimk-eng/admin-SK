@@ -116,7 +116,7 @@ import {
 import defaultBirthdayCourtyard from './assets/images/birthday-courtyard.jpg'
 
 const DEFAULT_ARTICLE_COVER_IMAGES = {
-  'home-of-care': defaultBirthdayCourtyard,
+  'home-of-care': 'https://res.cloudinary.com/ll9equhn/image/upload/v1791266115/swayamkrushi/articles/birthday-courtyard.jpg',
   'group-homes': 'https://res.cloudinary.com/ll9equhn/image/upload/v1791266119/swayamkrushi/articles/grouphome-residents.jpg',
   'building-blocks': 'https://res.cloudinary.com/ll9equhn/image/upload/v1791791422/swayamkrushi/pfado6pu8ir2fmbrovtp.jpg',
   'bed-hotspot': 'https://res.cloudinary.com/ll9equhn/video/upload/v1791802644/swayamkrushi/mpelqvpwjkm5ks5f9hkl.jpg'
@@ -800,6 +800,7 @@ export default function App() {
 
   const [eventImageForm, setEventImageForm] = useState({
     title: '',
+    caption: '',
     media: [],
     order: 0
   })
@@ -1675,7 +1676,8 @@ export default function App() {
       }
 
       const isTextType = articleForm.hasThumbnail === false || articleForm.featuredMediaType === 'text' || articleForm.mediaType === 'text'
-      const isVideoType = !isTextType && (articleForm.featuredMediaType === 'video' || articleForm.mediaType === 'video') && Boolean(articleForm.videoUrl && articleForm.videoUrl.trim().length > 5)
+      const hasExplicitVideoUrl = Boolean(articleForm.videoUrl && articleForm.videoUrl.trim().length > 5)
+      const isVideoType = !isTextType && (articleForm.featuredMediaType === 'video' || articleForm.mediaType === 'video' || hasExplicitVideoUrl) && hasExplicitVideoUrl
 
       const finalMediaType = isTextType ? 'text' : (isVideoType ? 'video' : 'image')
       const finalHasThumb = !isTextType
@@ -1685,7 +1687,7 @@ export default function App() {
       const customPoster = isVideoType && articleForm.videoPosterUrl && articleForm.videoPosterUrl.trim().length > 5 ? articleForm.videoPosterUrl.trim() : ''
       const finalThumbnailUrl = isVideoType ? (articleForm.videoThumbnailUrl?.trim() || generatedThumb || '') : ''
 
-      // Synchronize image/video captions and purge removed media from contentHtml
+      // Synchronize image/video captions and ensure no user-uploaded media is lost
       let finalContentHtml = articleForm.contentHtml || ''
       const cleanedImages = (articleForm.images || []).map((img) => {
         const url = typeof img === 'string' ? img.trim() : (img.url || '').trim()
@@ -1704,114 +1706,146 @@ export default function App() {
         const doc = parser.parseFromString(finalContentHtml, 'text/html')
         let changed = false
 
-        // Purge figures not in cleanedImages
-        const figures = Array.from(doc.querySelectorAll('figure'))
-        figures.forEach((fig) => {
-          const mediaEl = fig.querySelector('img, video')
-          const src = (mediaEl?.getAttribute('src') || mediaEl?.querySelector('source')?.getAttribute('src') || '').trim()
-          if (!src || !cleanedImages.some((mObj) => isSameImage(mObj.url, src))) {
-            fig.remove()
-            changed = true
-          }
-        })
-
-        // Purge standalone images and videos not in cleanedImages
-        const standaloneMedias = Array.from(doc.querySelectorAll('img, video'))
-        standaloneMedias.forEach((el) => {
-          if (el.closest('figure')) return
+        // 1. First, collect any media embedded in contentHtml so they are recognized in cleanedImages and NEVER purged
+        const inHtmlMedia = Array.from(doc.querySelectorAll('img, video'))
+        inHtmlMedia.forEach((el) => {
           const src = (el.getAttribute('src') || el.querySelector('source')?.getAttribute('src') || '').trim()
-          if (!src || !cleanedImages.some((mObj) => isSameImage(mObj.url, src))) {
-            const parent = el.parentElement
-            el.remove()
-            changed = true
-            if (parent && (parent.tagName === 'P' || parent.tagName === 'DIV')) {
-              if (!parent.textContent?.trim() && parent.children.length === 0) {
-                parent.remove()
-              }
-            }
+          if (src && !cleanedImages.some((m) => isSameImage(m.url, src))) {
+            const isVid = el.tagName.toLowerCase() === 'video' || isVideoUrl(src)
+            const cap = el.getAttribute('data-caption') || el.getAttribute('alt') || el.getAttribute('title') || getKnownCaption(src) || ''
+            cleanedImages.push({
+              url: src,
+              caption: cap,
+              alt: cap,
+              type: isVid ? 'video' : 'image'
+            })
           }
         })
 
-        if (cleanedImages.length > 0) {
-          cleanedImages.forEach((mediaObj) => {
-            if (!mediaObj.url) return
-            const targetCaption = (mediaObj.caption || '').trim()
-
-            // 1. Sync <figure> tags containing img or video
-            const allFigures = Array.from(doc.querySelectorAll('figure'))
-            allFigures.forEach((fig) => {
-              const mediaEl = fig.querySelector('img, video')
-              const src = (mediaEl?.getAttribute('src') || mediaEl?.querySelector('source')?.getAttribute('src') || '').trim()
-              if (src && (src === mediaObj.url || isSameImage(src, mediaObj.url))) {
-                let figcap = fig.querySelector('figcaption')
-                if (targetCaption) {
-                  if (!figcap) {
-                    figcap = doc.createElement('figcaption')
-                    figcap.className = 'article-inline-caption'
-                    fig.appendChild(figcap)
-                  }
-                  figcap.textContent = targetCaption
-                } else if (figcap) {
-                  figcap.remove()
-                }
-                if (targetCaption) {
-                  mediaEl.setAttribute('alt', targetCaption)
-                } else {
-                  mediaEl.removeAttribute('alt')
-                }
-                if (mediaEl.tagName.toLowerCase() === 'video') {
-                  if (targetCaption) {
-                    mediaEl.setAttribute('data-caption', targetCaption)
-                    mediaEl.setAttribute('title', targetCaption)
-                  } else {
-                    mediaEl.removeAttribute('data-caption')
-                    mediaEl.removeAttribute('title')
-                  }
-                }
-                changed = true
-              }
-            })
-
-            // 2. Sync standalone <img> tags
-            const standaloneImgs = Array.from(doc.querySelectorAll('img'))
-            standaloneImgs.forEach((imgEl) => {
-              if (imgEl.closest('figure')) return
-              const src = imgEl.getAttribute('src')?.trim()
-              if (src && (src === mediaObj.url || isSameImage(src, mediaObj.url))) {
-                if (targetCaption) {
-                  imgEl.setAttribute('alt', targetCaption)
-                  imgEl.setAttribute('title', targetCaption)
-                } else {
-                  imgEl.removeAttribute('alt')
-                  imgEl.removeAttribute('title')
-                }
-                changed = true
-              }
-            })
-
-            // 3. Sync standalone <video> tags
-            const standaloneVideos = Array.from(doc.querySelectorAll('video'))
-            standaloneVideos.forEach((vidEl) => {
-              if (vidEl.closest('figure')) return
-              const src = (vidEl.getAttribute('src') || vidEl.querySelector('source')?.getAttribute('src') || '').trim()
-              if (src && (src === mediaObj.url || isSameImage(src, mediaObj.url))) {
-                if (targetCaption) {
-                  vidEl.setAttribute('data-caption', targetCaption)
-                  vidEl.setAttribute('title', targetCaption)
-                } else {
-                  vidEl.removeAttribute('data-caption')
-                  vidEl.removeAttribute('title')
-                }
-                changed = true
-              }
-            })
+        // 2. Append any story media from cleanedImages that are not yet in contentHtml
+        cleanedImages.forEach((mObj) => {
+          if (!mObj.url) return
+          const alreadyInHtml = Array.from(doc.querySelectorAll('img, video')).some((el) => {
+            const s = (el.getAttribute('src') || el.querySelector('source')?.getAttribute('src') || '').trim()
+            return isSameImage(s, mObj.url)
           })
-        }
+          if (!alreadyInHtml) {
+            const fig = doc.createElement('figure')
+            const isVid = mObj.type === 'video' || isVideoUrl(mObj.url)
+            fig.className = `article-inline-figure float-left size-small ${isVid ? 'article-inline-video-figure' : ''}`
+            if (isVid) {
+              const vid = doc.createElement('video')
+              vid.setAttribute('src', mObj.url)
+              vid.setAttribute('controls', 'true')
+              vid.setAttribute('playsinline', 'true')
+              vid.style.maxWidth = '100%'
+              vid.style.borderRadius = '8px'
+              vid.style.margin = '20px auto'
+              vid.style.display = 'block'
+              if (mObj.caption) {
+                vid.setAttribute('data-caption', mObj.caption)
+                vid.setAttribute('title', mObj.caption)
+              }
+              fig.appendChild(vid)
+            } else {
+              const img = doc.createElement('img')
+              img.setAttribute('src', mObj.url)
+              if (mObj.caption) {
+                img.setAttribute('alt', mObj.caption)
+              }
+              fig.appendChild(img)
+            }
+            if (mObj.caption) {
+              const figcap = doc.createElement('figcaption')
+              figcap.className = 'article-inline-caption'
+              figcap.textContent = mObj.caption
+              fig.appendChild(figcap)
+            }
+            doc.body.appendChild(fig)
+            changed = true
+          }
+        })
+
+        // 3. Sync captions for all figures and standalone media
+        cleanedImages.forEach((mediaObj) => {
+          if (!mediaObj.url) return
+          const targetCaption = (mediaObj.caption || '').trim()
+
+          const allFigures = Array.from(doc.querySelectorAll('figure'))
+          allFigures.forEach((fig) => {
+            const mediaEl = fig.querySelector('img, video')
+            const src = (mediaEl?.getAttribute('src') || mediaEl?.querySelector('source')?.getAttribute('src') || '').trim()
+            if (src && (src === mediaObj.url || isSameImage(src, mediaObj.url))) {
+              let figcap = fig.querySelector('figcaption')
+              if (targetCaption) {
+                if (!figcap) {
+                  figcap = doc.createElement('figcaption')
+                  figcap.className = 'article-inline-caption'
+                  fig.appendChild(figcap)
+                }
+                figcap.textContent = targetCaption
+              } else if (figcap) {
+                figcap.remove()
+              }
+              if (targetCaption) {
+                mediaEl.setAttribute('alt', targetCaption)
+              } else {
+                mediaEl.removeAttribute('alt')
+              }
+              if (mediaEl.tagName.toLowerCase() === 'video') {
+                if (targetCaption) {
+                  mediaEl.setAttribute('data-caption', targetCaption)
+                  mediaEl.setAttribute('title', targetCaption)
+                } else {
+                  mediaEl.removeAttribute('data-caption')
+                  mediaEl.removeAttribute('title')
+                }
+              }
+              changed = true
+            }
+          })
+
+          const standaloneImgs = Array.from(doc.querySelectorAll('img'))
+          standaloneImgs.forEach((imgEl) => {
+            if (imgEl.closest('figure')) return
+            const src = imgEl.getAttribute('src')?.trim()
+            if (src && (src === mediaObj.url || isSameImage(src, mediaObj.url))) {
+              if (targetCaption) {
+                imgEl.setAttribute('alt', targetCaption)
+                imgEl.setAttribute('title', targetCaption)
+              } else {
+                imgEl.removeAttribute('alt')
+                imgEl.removeAttribute('title')
+              }
+              changed = true
+            }
+          })
+
+          const standaloneVideos = Array.from(doc.querySelectorAll('video'))
+          standaloneVideos.forEach((vidEl) => {
+            if (vidEl.closest('figure')) return
+            const src = (vidEl.getAttribute('src') || vidEl.querySelector('source')?.getAttribute('src') || '').trim()
+            if (src && (src === mediaObj.url || isSameImage(src, mediaObj.url))) {
+              if (targetCaption) {
+                vidEl.setAttribute('data-caption', targetCaption)
+                vidEl.setAttribute('title', targetCaption)
+              } else {
+                vidEl.removeAttribute('data-caption')
+                vidEl.removeAttribute('title')
+              }
+              changed = true
+            }
+          })
+        })
 
         if (changed) {
           finalContentHtml = doc.body.innerHTML
         }
       }
+
+      const rawCoverUrl = finalMediaType === 'image'
+        ? (articleForm.imageUrl?.trim() || '')
+        : (customPoster || finalThumbnailUrl || articleForm.imageUrl || '')
 
       const cleanedPayload = {
         ...articleForm,
@@ -1825,7 +1859,7 @@ export default function App() {
         videoPosterUrl: customPoster,
         hasThumbnail: finalHasThumb,
         showThumbnail: finalHasThumb,
-        imageUrl: finalMediaType === 'image' ? (articleForm.imageUrl?.trim() || '') : (customPoster || finalThumbnailUrl || articleForm.imageUrl || ''),
+        imageUrl: sanitizeImageUrl(rawCoverUrl),
         paragraphs: finalParagraphs.length > 0 ? finalParagraphs : [articleForm.excerpt]
       }
 
@@ -2166,6 +2200,7 @@ export default function App() {
 
   const blankEventForm = (order = 0) => ({
     title: '',
+    caption: '',
     media: [],
     order
   })
@@ -2212,6 +2247,7 @@ export default function App() {
     setEditingEvent(item)
     setEventImageForm({
       title: item.title || '',
+      caption: item.caption || '',
       media: getEventMedia(item),
       order: item.order || 0
     })
@@ -2244,6 +2280,7 @@ export default function App() {
         }))
       const updated = await updateEventImage(id, {
         title: album.title || '',
+        caption: album.caption || '',
         media: nextMedia,
         order: album.order || 0
       })
@@ -2267,7 +2304,8 @@ export default function App() {
       return
     }
     try {
-      const payload = { title, media, order: eventImageForm.order || 0 }
+      const caption = (eventImageForm.caption || '').trim()
+      const payload = { title, caption, media, order: eventImageForm.order || 0 }
       if (editingEvent?._id || editingEvent?.id) {
         await updateEventImage(editingEvent._id || editingEvent.id, payload)
         showNotification('Event gallery updated')
@@ -4932,6 +4970,11 @@ export default function App() {
                         <div className="admin-event-album-head">
                           <div>
                             <h4 className="admin-media-title">{item.title || 'Untitled event'}</h4>
+                            {item.caption && (
+                              <p style={{ fontSize: '13px', color: '#555', fontStyle: 'italic', margin: '3px 0 6px' }}>
+                                {item.caption}
+                              </p>
+                            )}
                             <p className="admin-media-caption">
                               {media.length} {media.length === 1 ? 'file' : 'files'}
                             </p>
@@ -6566,6 +6609,18 @@ export default function App() {
                   onChange={(e) => setEventImageForm({ ...eventImageForm, title: e.target.value })}
                   placeholder="e.g. Annual Day 2025"
                   className="admin-input"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Event Caption <span style={{ fontWeight: 400, color: '#888' }}>(optional — shown under all photos in this event)</span></label>
+                <textarea
+                  rows={2}
+                  value={eventImageForm.caption || ''}
+                  onChange={(e) => setEventImageForm({ ...eventImageForm, caption: e.target.value })}
+                  placeholder="e.g. Annual Day celebrations at Swayamkrushi campus, March 2025"
+                  className="admin-textarea"
+                  style={{ resize: 'vertical' }}
                 />
               </div>
 

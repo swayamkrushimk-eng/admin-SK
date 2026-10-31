@@ -98,6 +98,21 @@ export function getPlayableVideoUrl(videoUrl) {
   return trimmed
 }
 
+export function sanitizeImageUrl(url, fallback = null) {
+  if (!url || typeof url !== 'string') return fallback || ''
+  const trimmed = url.trim()
+  if (!trimmed) return fallback || ''
+  if (
+    trimmed.startsWith('/src/') ||
+    trimmed.startsWith('src/') ||
+    trimmed.includes('/assets/images/birthday-courtyard.jpg') ||
+    trimmed === 'birthday-courtyard.jpg'
+  ) {
+    return 'https://res.cloudinary.com/ll9equhn/image/upload/v1791266115/swayamkrushi/articles/birthday-courtyard.jpg'
+  }
+  return trimmed
+}
+
 export const getDeliveryVideoUrl = getPlayableVideoUrl
 export const getOptimizedVideoUrl = getPlayableVideoUrl
 
@@ -194,11 +209,13 @@ export function resolveArticleMedia(article, fallbackImage = null) {
     }
   }
 
-  const rawImageUrl =
+  const rawCandidate =
     article.imageUrl ||
     (typeof article.featuredMediaUrl === 'string' && !article.featuredMediaUrl.match(/\.(mp4|webm|mov|m4v)$/i) ? article.featuredMediaUrl : '') ||
     (typeof article.mediaUrl === 'string' && !article.mediaUrl.match(/\.(mp4|webm|mov|m4v)$/i) ? article.mediaUrl : '') ||
     fallbackImage
+
+  const rawImageUrl = sanitizeImageUrl(rawCandidate, fallbackImage)
 
   return {
     featuredMediaType: 'image',

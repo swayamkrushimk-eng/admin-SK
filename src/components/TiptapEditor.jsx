@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { Node, mergeAttributes } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
@@ -142,6 +142,16 @@ export default function TiptapEditor({ content, onChange, placeholder = 'Start w
     }
   })
 
+  // Sync content when prop changes from outside (e.g. switching articles or edit modal open)
+  useEffect(() => {
+    if (!editor) return
+    const currentHtml = editor.getHTML()
+    const targetHtml = content || ''
+    if (targetHtml !== currentHtml) {
+      editor.commands.setContent(targetHtml)
+    }
+  }, [content, editor])
+
   // Insert link
   const setLink = useCallback(() => {
     if (!editor) return
@@ -217,6 +227,16 @@ export default function TiptapEditor({ content, onChange, placeholder = 'Start w
         width: 640,
         height: 360
       })
+
+  // Sync content when prop changes from outside (e.g. switching articles or edit modal open)
+  useEffect(() => {
+    if (!editor) return
+    const currentHtml = editor.getHTML()
+    const targetHtml = content || ''
+    if (targetHtml !== currentHtml) {
+      editor.commands.setContent(targetHtml)
+    }
+  }, [content, editor])
     } else {
       if (editor.commands.setVideo) {
         editor.chain().focus().setVideo({ src: url }).run()
