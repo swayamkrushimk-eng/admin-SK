@@ -762,6 +762,11 @@ body, html {
   background: #eee8dc;
 }
 
+.admin-event-thumb .admin-img-remove-btn-corner {
+  top: 6px;
+  right: 6px;
+}
+
 .admin-event-thumb img,
 .admin-event-thumb video {
   width: 100%;

@@ -2208,6 +2208,52 @@ export default function App() {
     }))
   }
 
+  const openEditEventModal = (item) => {
+    setEditingEvent(item)
+    setEventImageForm({
+      title: item.title || '',
+      media: getEventMedia(item),
+      order: item.order || 0
+    })
+    setShowEventModal(true)
+  }
+
+  const handleDeleteEventMediaItem = async (album, index) => {
+    const media = getEventMedia(album)
+    if (!media[index]) return
+    const id = album._id || album.id
+    if (media.length <= 1) {
+      if (!window.confirm(`This is the last file. Delete the event "${album.title || 'this event'}"?`)) return
+      try {
+        await deleteEventImage(id)
+        showNotification('Event deleted')
+        setEventImages((prev) => prev.filter((item) => item._id !== id && item.id !== id))
+      } catch (err) {
+        showNotification('Failed to delete event: ' + err.message, 'error')
+      }
+      return
+    }
+    if (!window.confirm('Remove this photo or video from the event?')) return
+    try {
+      const nextMedia = media
+        .filter((_, i) => i !== index)
+        .map((file) => ({
+          url: file.url,
+          mediaType: file.mediaType === 'video' || isVideoUrl(file.url) ? 'video' : 'image',
+          videoThumbnailUrl: file.videoThumbnailUrl || ''
+        }))
+      const updated = await updateEventImage(id, {
+        title: album.title || '',
+        media: nextMedia,
+        order: album.order || 0
+      })
+      setEventImages((prev) => prev.map((item) => (item._id === id || item.id === id ? updated : item)))
+      showNotification('File removed')
+    } catch (err) {
+      showNotification('Failed to remove file: ' + err.message, 'error')
+    }
+  }
+
   const handleSaveEventImage = async (e) => {
     e.preventDefault()
     const title = (eventImageForm.title || '').trim()
@@ -4855,7 +4901,7 @@ export default function App() {
                 <div>
                   <h1 className="admin-section-title">Event Gallery</h1>
                   <p className="admin-section-desc">
-                    Add an event title, then upload as many photos and videos as you want. They appear together on /#/events.
+                    Add an event title, then upload photos and videos. Use Edit to add files or remove them one at a time.
                   </p>
                 </div>
                 <button
@@ -4892,19 +4938,11 @@ export default function App() {
                           </div>
                           <div className="admin-media-actions" style={{ padding: 0 }}>
                             <button
-                              onClick={() => {
-                                setEditingEvent(item)
-                                setEventImageForm({
-                                  title: item.title || '',
-                                  media: getEventMedia(item),
-                                  order: item.order || 0
-                                })
-                                setShowEventModal(true)
-                              }}
+                              onClick={() => openEditEventModal(item)}
                               className="admin-btn-action admin-btn-edit"
                             >
                               <Edit3 size={13} style={{ display: 'inline', marginRight: '4px' }} />
-                              Add more
+                              Edit
                             </button>
                             <button
                               onClick={() => handleDeleteEventImage(item._id || item.id, item.title)}
@@ -4929,6 +4967,15 @@ export default function App() {
                                 ) : (
                                   <img src={file.url} alt="" />
                                 )}
+                                <button
+                                  type="button"
+                                  className="admin-img-remove-btn-corner"
+                                  onClick={() => handleDeleteEventMediaItem(item, idx)}
+                                  title="Remove this file"
+                                  aria-label="Remove this file"
+                                >
+                                  <X size={12} />
+                                </button>
                               </div>
                             )
                           })}
@@ -6533,7 +6580,7 @@ export default function App() {
                   disabled={uploadingImage}
                 />
                 <p className="admin-media-caption" style={{ marginTop: '8px' }}>
-                  Select as many images and videos as you want. You can add more later.
+                  Add more files, or click ✕ on a thumbnail to remove that photo or video. Save to keep the changes.
                 </p>
                 {eventUploadProgress && <p className="admin-uploading-text">{eventUploadProgress}</p>}
                 {(eventImageForm.media || []).length > 0 && (
