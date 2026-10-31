@@ -268,6 +268,38 @@ export async function deleteCertificate(id) {
   return resData
 }
 
+// ─── EVENT GALLERY API ─────────────────────────────────────────────────────
+export async function fetchEventImages() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/events`)
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+    return await res.json()
+  } catch (err) {
+    console.warn('Backend API error for event images:', err.message)
+    return []
+  }
+}
+
+export async function createEventImage(data) {
+  const res = await fetch(`${API_BASE_URL}/events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  const resData = await res.json()
+  if (!res.ok) throw new Error(resData.error || 'Failed to add event image')
+  return resData
+}
+
+export async function deleteEventImage(id) {
+  const res = await fetch(`${API_BASE_URL}/events/${id}`, {
+    method: 'DELETE'
+  })
+  const resData = await res.json()
+  if (!res.ok) throw new Error(resData.error || 'Failed to delete event image')
+  return resData
+}
+
 // ─── FAQS API ──────────────────────────────────────────────────────────────
 export async function fetchFaqs() {
   try {

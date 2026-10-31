@@ -49,7 +49,8 @@ import {
   MessageSquareQuote,
   Newspaper,
   Users2,
-  Radio
+  Radio,
+  Images
 } from 'lucide-react'
 import {
   adminLogin,
@@ -73,6 +74,9 @@ import {
   fetchCertificates,
   createCertificate,
   deleteCertificate,
+  fetchEventImages,
+  createEventImage,
+  deleteEventImage,
   fetchFaqs,
   createFaq,
   updateFaq,
@@ -663,6 +667,7 @@ export default function App() {
   const [mediaTypeFilter, setMediaTypeFilter] = useState('all')
   const [accolades, setAccolades] = useState({ featured: null, timeline: [] })
   const [certificates, setCertificates] = useState([])
+  const [eventImages, setEventImages] = useState([])
   const [faqs, setFaqs] = useState([])
   const [inquiries, setInquiries] = useState([])
   const [subscribers, setSubscribers] = useState([])
@@ -792,6 +797,13 @@ export default function App() {
     order: 0
   })
 
+  const [eventImageForm, setEventImageForm] = useState({
+    title: '',
+    caption: '',
+    imageUrl: '',
+    order: 0
+  })
+
   const [editingFaq, setEditingFaq] = useState(null)
   const [faqForm, setFaqForm] = useState({
     question: '',
@@ -804,6 +816,7 @@ export default function App() {
   const [showArticleModal, setShowArticleModal] = useState(false)
   const [showAccoladeModal, setShowAccoladeModal] = useState(false)
   const [showCertModal, setShowCertModal] = useState(false)
+  const [showEventModal, setShowEventModal] = useState(false)
   const [showFaqModal, setShowFaqModal] = useState(false)
 
   // Insiders Video Stories State
@@ -953,6 +966,7 @@ export default function App() {
         faqsData,
         inqData,
         certsData,
+        eventsData,
         subsData,
         campData,
         insidersData,
@@ -967,6 +981,7 @@ export default function App() {
         fetchFaqs(),
         fetchInquiries(),
         fetchCertificates(),
+        fetchEventImages(),
         fetchSubscribers(),
         fetchCampaigns(),
         fetchInsiders(),
@@ -988,6 +1003,9 @@ export default function App() {
         setCertificates(certsData)
       } else if (accoladesData?.certificates) {
         setCertificates(accoladesData.certificates)
+      }
+      if (Array.isArray(eventsData)) {
+        setEventImages(eventsData)
       }
       if (faqsData) setFaqs(faqsData)
       if (inqData) setInquiries(inqData)
@@ -2129,6 +2147,31 @@ export default function App() {
     }
   }
 
+  const handleSaveEventImage = async (e) => {
+    e.preventDefault()
+    try {
+      await createEventImage(eventImageForm)
+      showNotification('Event photo added to the gallery!')
+      setShowEventModal(false)
+      setEventImageForm({ title: '', caption: '', imageUrl: '', order: 0 })
+      const refreshed = await fetchEventImages()
+      setEventImages(Array.isArray(refreshed) ? refreshed : [])
+    } catch (err) {
+      showNotification('Failed to add event photo: ' + err.message, 'error')
+    }
+  }
+
+  const handleDeleteEventImage = async (id, title) => {
+    if (!window.confirm(`Delete event photo "${title || 'this image'}"?`)) return
+    try {
+      await deleteEventImage(id)
+      showNotification('Event photo deleted')
+      setEventImages((prev) => prev.filter((item) => item._id !== id && item.id !== id))
+    } catch (err) {
+      showNotification('Failed to delete event photo: ' + err.message, 'error')
+    }
+  }
+
   // ─── FAQ ACTIONS ────────────────────────────────────────────────────────
   const openNewFaqModal = () => {
     setEditingFaq(null)
@@ -2639,6 +2682,14 @@ export default function App() {
             >
               <FileImage size={18} className="admin-nav-icon" />
               <span>Certificates & Media ({certificates.length})</span>
+            </button>
+
+            <button
+              className={`admin-nav-item ${activeTab === 'events' ? 'active' : ''}`}
+              onClick={() => setActiveTab('events')}
+            >
+              <Images size={18} className="admin-nav-icon" />
+              <span>Event Gallery ({eventImages.length})</span>
             </button>
 
             <button
@@ -4720,6 +4771,60 @@ export default function App() {
             </div>
           )}
 
+          {activeTab === 'events' && (
+            <div className="admin-tab-content">
+              <div className="admin-content-header">
+                <div>
+                  <h1 className="admin-section-title">Event Gallery</h1>
+                  <p className="admin-section-desc">
+                    Upload photos that appear on the public Events Gallery page at /#/events.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setEventImageForm({ title: '', caption: '', imageUrl: '', order: eventImages.length + 1 })
+                    setShowEventModal(true)
+                  }}
+                  className="admin-btn admin-btn-primary"
+                >
+                  <Upload size={15} />
+                  <span>Upload Event Photo</span>
+                </button>
+              </div>
+
+              {eventImages.length === 0 ? (
+                <div className="admin-empty-state">
+                  <Images size={40} color="#8c8278" style={{ marginBottom: '12px' }} />
+                  <h3>No Event Photos Yet</h3>
+                  <p>Upload images here and they will show on the Events Gallery page of the site.</p>
+                </div>
+              ) : (
+                <div className="admin-media-grid">
+                  {eventImages.map((item) => (
+                    <div key={item._id || item.id} className="admin-media-card">
+                      <div className="admin-media-thumb-wrap">
+                        <img src={item.imageUrl} alt={item.title || 'Event photo'} className="admin-media-img" />
+                      </div>
+                      <div className="admin-media-info">
+                        <h4 className="admin-media-title">{item.title || 'Event photo'}</h4>
+                        {item.caption && <p className="admin-media-caption">{item.caption}</p>}
+                      </div>
+                      <div className="admin-media-actions">
+                        <button
+                          onClick={() => handleDeleteEventImage(item._id || item.id, item.title)}
+                          className="admin-btn-action admin-btn-delete"
+                        >
+                          <Trash2 size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 5: FAQS MANAGER */}
           {activeTab === 'faqs' && (
             <div className="admin-tab-content">
@@ -6265,6 +6370,95 @@ export default function App() {
                 <button type="submit" className="admin-btn admin-btn-primary">
                   <Upload size={15} />
                   <span>Upload & Save</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEventModal && (
+        <div className="admin-modal-overlay">
+          <div className="admin-modal">
+            <div className="admin-modal-header">
+              <h2>Upload Event Gallery Photo</h2>
+              <button onClick={() => setShowEventModal(false)} className="admin-modal-close">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEventImage}>
+              <div className="admin-form-group">
+                <label>Photo Title</label>
+                <input
+                  type="text"
+                  value={eventImageForm.title}
+                  onChange={(e) => setEventImageForm({ ...eventImageForm, title: e.target.value })}
+                  placeholder="e.g. Annual Day 2025"
+                  className="admin-input"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Caption</label>
+                <input
+                  type="text"
+                  value={eventImageForm.caption}
+                  onChange={(e) => setEventImageForm({ ...eventImageForm, caption: e.target.value })}
+                  placeholder="Optional short description"
+                  className="admin-input"
+                />
+              </div>
+
+              <div className="admin-form-group">
+                <label>Event Photo *</label>
+                <div className="admin-image-picker-row">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileUpload(e, setEventImageForm, 'imageUrl')}
+                    className="admin-file-input"
+                    disabled={uploadingImage}
+                  />
+                  <span className="admin-or-divider">OR</span>
+                  <input
+                    type="text"
+                    placeholder="Image URL"
+                    value={eventImageForm.imageUrl}
+                    onChange={(e) => setEventImageForm({ ...eventImageForm, imageUrl: e.target.value })}
+                    className="admin-input"
+                    required
+                  />
+                </div>
+                {eventImageForm.imageUrl && (
+                  <div className="admin-img-preview-box">
+                    <div className="admin-preview-img-wrapper">
+                      <img src={eventImageForm.imageUrl} alt="Preview" className="admin-preview-img" />
+                      <button
+                        type="button"
+                        onClick={() => setEventImageForm((prev) => ({ ...prev, imageUrl: '' }))}
+                        className="admin-img-remove-btn-corner"
+                        title="Remove photo"
+                        aria-label="Remove image"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="admin-modal-actions">
+                <button
+                  type="button"
+                  onClick={() => setShowEventModal(false)}
+                  className="admin-btn admin-btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="admin-btn admin-btn-primary" disabled={uploadingImage || !eventImageForm.imageUrl}>
+                  <Upload size={15} />
+                  <span>{uploadingImage ? 'Uploading…' : 'Save to Gallery'}</span>
                 </button>
               </div>
             </form>
