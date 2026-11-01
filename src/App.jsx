@@ -1728,9 +1728,24 @@ export default function App() {
           }
         })
 
+        // 2a. If a featured hero video is set, strip matching embeds from body HTML so the
+        // article page does not fetch/render the same video twice (hero + body).
+        if (rawVideo) {
+          Array.from(doc.querySelectorAll('video')).forEach((vidEl) => {
+            const src = (vidEl.getAttribute('src') || vidEl.querySelector('source')?.getAttribute('src') || '').trim()
+            if (!src || !isSameImage(src, rawVideo)) return
+            const fig = vidEl.closest('figure')
+            if (fig) fig.remove()
+            else vidEl.remove()
+            changed = true
+          })
+        }
+
         // 2. Append any story media from cleanedImages that are not yet in contentHtml
         cleanedImages.forEach((mObj) => {
           if (!mObj.url) return
+          // Featured hero video is rendered by ArticlePage — do not also inject it into body HTML
+          if (rawVideo && isSameImage(mObj.url, rawVideo)) return
           const alreadyInHtml = Array.from(doc.querySelectorAll('img, video')).some((el) => {
             const s = (el.getAttribute('src') || el.querySelector('source')?.getAttribute('src') || '').trim()
             return isSameImage(s, mObj.url)
