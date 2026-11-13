@@ -796,9 +796,6 @@ export default function App() {
     circleLeftPos: 'center 50%',
     circleCenterPos: 'center 50%',
     circleRightPos: 'center 52%',
-    welcomeTourEnabled: false,
-    welcomeTourVersion: 1,
-    welcomeTourVideoUrl: ''
   })
 
   // Committee Form & Modal state
@@ -4010,95 +4007,6 @@ export default function App() {
                   <Plus size={15} />
                   <span>Write New Article</span>
                 </button>
-              </div>
-
-              {/* Guided welcome tour (site homepage → Dare to Dream video) */}
-              <div
-                className="admin-filter-bar"
-                style={{
-                  marginBottom: 12,
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 16,
-                  flexWrap: 'wrap'
-                }}
-              >
-                <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-                  <strong style={{ display: 'block', fontSize: 14, color: '#2c2426' }}>
-                    Welcome site tour
-                  </strong>
-                  <span style={{ fontSize: 12, color: '#8c8278' }}>
-                    White welcome → home (10s) → play video URL fullscreen → return home. Runs once per visitor when ON.
-                  </span>
-                  <label style={{ display: 'block', fontSize: 12, color: '#5c534c', marginTop: 10 }}>
-                    Tour video URL
-                  </label>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                    <input
-                      type="url"
-                      className="admin-input"
-                      style={{ flex: '1 1 260px', minWidth: 0 }}
-                      placeholder="https://…/video.mp4 (Cloudinary or direct video link)"
-                      value={settings.welcomeTourVideoUrl || ''}
-                      onChange={(e) =>
-                        setSettings((prev) => ({ ...prev, welcomeTourVideoUrl: e.target.value }))
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="admin-btn"
-                      onClick={async () => {
-                        try {
-                          await updateSettings(cleanSettingsPayload(settings))
-                          showNotification('Tour video URL saved')
-                        } catch (err) {
-                          showNotification('Failed to save tour URL: ' + (err?.message || err), 'error')
-                        }
-                      }}
-                    >
-                      Save URL
-                    </button>
-                  </div>
-                </div>
-                <div className="admin-thumb-toggle-switch" role="group" aria-label="Welcome site tour">
-                  <button
-                    type="button"
-                    className={`admin-toggle-pill ${settings.welcomeTourEnabled ? 'active-yes' : ''}`}
-                    onClick={async () => {
-                      const nextSettings = {
-                        ...settings,
-                        welcomeTourEnabled: true,
-                        // Bump so every browser can run the tour again after re-enabling
-                        welcomeTourVersion: (Number(settings.welcomeTourVersion) || 0) + 1
-                      }
-                      setSettings(nextSettings)
-                      try {
-                        await updateSettings(cleanSettingsPayload(nextSettings))
-                        showNotification('Welcome site tour turned ON — visitors will see it again')
-                      } catch (err) {
-                        showNotification('Failed to save tour toggle: ' + (err?.message || err), 'error')
-                      }
-                    }}
-                  >
-                    ON
-                  </button>
-                  <button
-                    type="button"
-                    className={`admin-toggle-pill ${!settings.welcomeTourEnabled ? 'active-no' : ''}`}
-                    onClick={async () => {
-                      const nextSettings = { ...settings, welcomeTourEnabled: false }
-                      setSettings(nextSettings)
-                      try {
-                        await updateSettings(cleanSettingsPayload(nextSettings))
-                        showNotification('Welcome site tour turned OFF')
-                      } catch (err) {
-                        showNotification('Failed to save tour toggle: ' + (err?.message || err), 'error')
-                      }
-                    }}
-                  >
-                    OFF
-                  </button>
-                </div>
               </div>
 
               {/* Filters and Search Bar */}
