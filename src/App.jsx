@@ -165,7 +165,7 @@ const KNOWN_MEDIA_CAPTIONS = {
   'xg9qemgyszqdhbsjymy8': 'The heart and soul of Swayamkrushi: Manjulaa Kalyaan, Founder-Director',
   'diizcur6lyalwamfkie3': 'The heart and soul of Swayamkrushi: Manjulaa Kalyaan, Founder-Director',
   'pfado6pu8ir2fmbrovtp': 'CLASS IN PROGRESS : Chavan, spl educator, explains different concepts to his students',
-  'pnui7ub8rucjkivunlmr': 'IT AIN’T EASY: A PwD tries to thread the needle at the jute bag making unit',
+  'pnui7ub8rucjkivunlmr': 'Y Lalitha Kumari guiding special students at the sewing machines in Swayamkrushi',
   'wiucyh179ols5xikxett': 'READY FOR SHOPPING: A variety of jute bags produced by the trainees',
   'puvccdjlbmj6bdxcnzlw': 'EARLY YEARS : Manjulaa Kalyaan with a group of special educators in New Delhi',
   'brmtve6ssso8s704wujs': 'UNSOLVED MYSTERY: The life size statue of Shirdi Sai Baba just landed at the doorstep of Swayamkrushi one day',
