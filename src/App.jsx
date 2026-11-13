@@ -796,7 +796,8 @@ export default function App() {
     circleLeftPos: 'center 50%',
     circleCenterPos: 'center 50%',
     circleRightPos: 'center 52%',
-    welcomeTourEnabled: false
+    welcomeTourEnabled: false,
+    welcomeTourVersion: 1
   })
 
   // Committee Form & Modal state
@@ -4034,11 +4035,16 @@ export default function App() {
                     type="button"
                     className={`admin-toggle-pill ${settings.welcomeTourEnabled ? 'active-yes' : ''}`}
                     onClick={async () => {
-                      const nextSettings = { ...settings, welcomeTourEnabled: true }
+                      const nextSettings = {
+                        ...settings,
+                        welcomeTourEnabled: true,
+                        // Bump so every browser can run the tour again after re-enabling
+                        welcomeTourVersion: (Number(settings.welcomeTourVersion) || 0) + 1
+                      }
                       setSettings(nextSettings)
                       try {
                         await updateSettings(cleanSettingsPayload(nextSettings))
-                        showNotification('Welcome site tour turned ON')
+                        showNotification('Welcome site tour turned ON — visitors will see it again')
                       } catch (err) {
                         showNotification('Failed to save tour toggle: ' + (err?.message || err), 'error')
                       }
