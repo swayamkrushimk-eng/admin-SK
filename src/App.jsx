@@ -782,7 +782,8 @@ export default function App() {
     joinUsBadgeImage: '',
     circleLeftPos: 'center 50%',
     circleCenterPos: 'center 50%',
-    circleRightPos: 'center 52%'
+    circleRightPos: 'center 52%',
+    welcomeTourEnabled: false
   })
 
   // Committee Form & Modal state
@@ -3948,6 +3949,61 @@ export default function App() {
                   <Plus size={15} />
                   <span>Write New Article</span>
                 </button>
+              </div>
+
+              {/* Guided welcome tour (site homepage → Dare to Dream video) */}
+              <div
+                className="admin-filter-bar"
+                style={{
+                  marginBottom: 12,
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 16,
+                  flexWrap: 'wrap'
+                }}
+              >
+                <div>
+                  <strong style={{ display: 'block', fontSize: 14, color: '#2c2426' }}>
+                    Welcome site tour
+                  </strong>
+                  <span style={{ fontSize: 12, color: '#8c8278' }}>
+                    White welcome → home (10s) → Dare to Dream → play video → home. Runs once per visitor when ON.
+                  </span>
+                </div>
+                <div className="admin-thumb-toggle-switch" role="group" aria-label="Welcome site tour">
+                  <button
+                    type="button"
+                    className={`admin-toggle-pill ${settings.welcomeTourEnabled ? 'active-yes' : ''}`}
+                    onClick={async () => {
+                      const nextSettings = { ...settings, welcomeTourEnabled: true }
+                      setSettings(nextSettings)
+                      try {
+                        await updateSettings(cleanSettingsPayload(nextSettings))
+                        showNotification('Welcome site tour turned ON')
+                      } catch (err) {
+                        showNotification('Failed to save tour toggle: ' + (err?.message || err), 'error')
+                      }
+                    }}
+                  >
+                    ON
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-toggle-pill ${!settings.welcomeTourEnabled ? 'active-no' : ''}`}
+                    onClick={async () => {
+                      const nextSettings = { ...settings, welcomeTourEnabled: false }
+                      setSettings(nextSettings)
+                      try {
+                        await updateSettings(cleanSettingsPayload(nextSettings))
+                        showNotification('Welcome site tour turned OFF')
+                      } catch (err) {
+                        showNotification('Failed to save tour toggle: ' + (err?.message || err), 'error')
+                      }
+                    }}
+                  >
+                    OFF
+                  </button>
+                </div>
               </div>
 
               {/* Filters and Search Bar */}
