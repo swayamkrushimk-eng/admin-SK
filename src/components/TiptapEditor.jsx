@@ -36,6 +36,7 @@ import { uploadImage, uploadMedia } from '../services/api'
 import './TiptapEditor.css'
 
 // Custom Tiptap Video Extension for native HTML5 video playback
+// Preserves captions (data-caption / title / wrapping figcaption) so admin edits stick.
 export const VideoExtension = Node.create({
   name: 'video',
   group: 'block',
@@ -53,6 +54,37 @@ export const VideoExtension = Node.create({
       },
       width: {
         default: '100%',
+      },
+      // Keep story-media captions through TipTap parse/serialize cycles
+      'data-caption': {
+        default: null,
+        parseHTML: (element) => {
+          const videoEl = element.tagName?.toLowerCase() === 'video' ? element : element.querySelector?.('video')
+          const figcap = element.tagName?.toLowerCase() === 'figure'
+            ? element.querySelector('figcaption')
+            : element.closest?.('figure')?.querySelector('figcaption')
+          return (
+            videoEl?.getAttribute('data-caption') ||
+            videoEl?.getAttribute('title') ||
+            figcap?.textContent?.trim() ||
+            null
+          )
+        },
+        renderHTML: (attributes) => {
+          if (!attributes['data-caption']) return {}
+          return { 'data-caption': attributes['data-caption'] }
+        }
+      },
+      title: {
+        default: null,
+        parseHTML: (element) => {
+          const videoEl = element.tagName?.toLowerCase() === 'video' ? element : element.querySelector?.('video')
+          return videoEl?.getAttribute('title') || videoEl?.getAttribute('data-caption') || null
+        },
+        renderHTML: (attributes) => {
+          if (!attributes.title && !attributes['data-caption']) return {}
+          return { title: attributes.title || attributes['data-caption'] }
+        }
       }
     }
   },
@@ -60,24 +92,61 @@ export const VideoExtension = Node.create({
   parseHTML() {
     return [
       {
-        tag: 'video',
-        getAttrs: (element) => ({
-          src: element.getAttribute('src'),
-          controls: element.hasAttribute('controls'),
-        }),
+        tag: 'figure',
+        getAttrs: (element) => {
+          const video = element.querySelector('video')
+          if (!video) return false
+          const figcap = element.querySelector('figcaption')
+          const caption =
+            video.getAttribute('data-caption') ||
+            video.getAttribute('title') ||
+            figcap?.textContent?.trim() ||
+            null
+          return {
+            src: video.getAttribute('src') || video.querySelector('source')?.getAttribute('src'),
+            controls: video.hasAttribute('controls'),
+            'data-caption': caption,
+            title: caption
+          }
+        }
       },
+      {
+        tag: 'video',
+        getAttrs: (element) => {
+          const caption =
+            element.getAttribute('data-caption') ||
+            element.getAttribute('title') ||
+            element.closest('figure')?.querySelector('figcaption')?.textContent?.trim() ||
+            null
+          return {
+            src: element.getAttribute('src') || element.querySelector('source')?.getAttribute('src'),
+            controls: element.hasAttribute('controls'),
+            'data-caption': caption,
+            title: caption
+          }
+        }
+      }
     ]
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      'video',
-      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
-        controls: 'true',
-        playsinline: 'true',
-        style: 'max-width: 100%; border-radius: 8px; margin: 20px auto; display: block; background: #000;'
-      })
-    ]
+    const caption = HTMLAttributes['data-caption'] || HTMLAttributes.title || ''
+    const videoAttrs = mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+      controls: 'true',
+      playsinline: 'true',
+      style: 'max-width: 100%; border-radius: 8px; margin: 20px auto; display: block; background: #000;'
+    })
+    if (caption) {
+      videoAttrs['data-caption'] = caption
+      videoAttrs.title = caption
+      return [
+        'figure',
+        { class: 'article-inline-figure article-inline-video-figure' },
+        ['video', videoAttrs],
+        ['figcaption', { class: 'article-inline-caption' }, caption]
+      ]
+    }
+    return ['video', videoAttrs]
   },
 
   addCommands() {

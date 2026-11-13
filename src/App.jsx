@@ -238,6 +238,16 @@ const DEFAULT_ARTICLE_IMAGES = {
   ]
 }
 
+const cloudinaryPublicId = (url) => {
+  if (!url || typeof url !== 'string') return ''
+  const cleaned = url.trim().split('?')[0].split('#')[0].toLowerCase()
+  const withVersion = cleaned.match(/\/(?:v\d+\/)(.+?)(?:\.[a-z0-9]+)?$/i)
+  if (withVersion?.[1]) return withVersion[1]
+  const uploadPath = cleaned.match(/\/upload\/(?:(?:[^/]+\/)*?)(?:v\d+\/)?(.+?)(?:\.[a-z0-9]+)?$/i)
+  if (uploadPath?.[1]) return uploadPath[1].replace(/^(?:[a-z0-9_,.:-]+\/)+/i, '')
+  return cleaned
+}
+
 const isSameImage = (u1, u2) => {
   if (!u1 || !u2) return false
   const a = u1.trim().toLowerCase()
@@ -246,6 +256,9 @@ const isSameImage = (u1, u2) => {
   const matchA = a.match(/\/v\d+\/([^.?#]+)/)
   const matchB = b.match(/\/v\d+\/([^.?#]+)/)
   if (matchA && matchB && matchA[1] === matchB[1]) return true
+  const idA = cloudinaryPublicId(a)
+  const idB = cloudinaryPublicId(b)
+  if (idA && idB && idA === idB) return true
   return false
 }
 
@@ -1483,11 +1496,17 @@ export default function App() {
         if (src) {
           const existing = initialImages.find((x) => isSameImage(x.url, src))
           if (!existing) {
-            const captionText = figcap?.textContent?.trim() || mediaEl.getAttribute('data-caption')?.trim() || mediaEl.getAttribute('alt')?.trim() || ''
+            // Prefer caption written in HTML; do not force KNOWN_MEDIA_CAPTIONS over admin edits
+            const captionText =
+              figcap?.textContent?.trim() ||
+              mediaEl.getAttribute('data-caption')?.trim() ||
+              mediaEl.getAttribute('alt')?.trim() ||
+              mediaEl.getAttribute('title')?.trim() ||
+              ''
             initialImages.push({
               url: src,
-              caption: captionText || getKnownCaption(src) || '',
-              alt: captionText || getKnownCaption(src) || '',
+              caption: captionText,
+              alt: captionText,
               type: isVid ? 'video' : 'image'
             })
           }
@@ -1502,11 +1521,14 @@ export default function App() {
         if (src) {
           const existing = initialImages.find((x) => isSameImage(x.url, src))
           if (!existing) {
-            const captionText = vidEl.getAttribute('data-caption') || vidEl.getAttribute('title') || ''
+            const captionText =
+              vidEl.getAttribute('data-caption')?.trim() ||
+              vidEl.getAttribute('title')?.trim() ||
+              ''
             initialImages.push({
               url: src,
-              caption: captionText || getKnownCaption(src) || '',
-              alt: captionText || getKnownCaption(src) || '',
+              caption: captionText,
+              alt: captionText,
               type: 'video'
             })
           }
@@ -1524,8 +1546,8 @@ export default function App() {
             const altText = imgEl.getAttribute('alt')?.trim() || imgEl.getAttribute('title')?.trim() || ''
             initialImages.push({
               url: src,
-              caption: altText || getKnownCaption(src) || '',
-              alt: altText || getKnownCaption(src) || '',
+              caption: altText,
+              alt: altText,
               type: 'image'
             })
           }
@@ -1784,17 +1806,47 @@ export default function App() {
 
       // Synchronize image/video captions and ensure no user-uploaded media is lost
       let finalContentHtml = articleForm.contentHtml || ''
-      const cleanedImages = (articleForm.images || []).map((img) => {
+      const cleanedImages = []
+      const pushUniqueMedia = (entry) => {
+        if (!entry?.url) return
+        const existing = cleanedImages.find((m) => isSameImage(m.url, entry.url))
+        if (existing) {
+          // Prefer captions from the admin story-media boxes (including cleared "")
+          if (entry.caption !== undefined && entry.caption !== null) {
+            existing.caption = String(entry.caption).trim()
+            existing.alt = existing.caption
+          }
+          if (entry.type) existing.type = entry.type
+          return
+        }
+        cleanedImages.push({
+          url: entry.url,
+          caption: entry.caption != null ? String(entry.caption).trim() : '',
+          alt: entry.caption != null ? String(entry.caption).trim() : '',
+          type: entry.type || (isVideoUrl(entry.url) ? 'video' : 'image'),
+          ...(entry.placement ? { placement: entry.placement } : {}),
+          ...(entry.size ? { size: entry.size } : {}),
+          ...(entry.afterHeading ? { afterHeading: entry.afterHeading } : {})
+        })
+      }
+
+      ;(articleForm.images || []).forEach((img) => {
         const url = typeof img === 'string' ? img.trim() : (img.url || '').trim()
+        if (!url) return
         const isVid = typeof img === 'object' && img.type ? img.type === 'video' : isVideoUrl(url)
-        const cap = typeof img === 'object' && typeof img.caption === 'string' ? img.caption.trim() : ''
-        return {
+        const cap =
+          typeof img === 'object' && img.caption !== undefined && img.caption !== null
+            ? String(img.caption)
+            : ''
+        pushUniqueMedia({
           url,
           caption: cap,
-          alt: cap,
-          type: isVid ? 'video' : 'image'
-        }
-      }).filter((img) => img.url.length > 0)
+          type: isVid ? 'video' : 'image',
+          placement: typeof img === 'object' ? img.placement : undefined,
+          size: typeof img === 'object' ? img.size : undefined,
+          afterHeading: typeof img === 'object' ? img.afterHeading : undefined
+        })
+      })
 
       // Always run DOM sync when there is body HTML and/or story media to persist
       if (finalContentHtml || cleanedImages.length > 0) {
@@ -1802,20 +1854,27 @@ export default function App() {
         const doc = parser.parseFromString(finalContentHtml || '<p></p>', 'text/html')
         let changed = Boolean(!finalContentHtml && cleanedImages.length > 0)
 
-        // 1. First, collect any media embedded in contentHtml so they are recognized in cleanedImages and NEVER purged
+        // 1. Collect HTML-only media. Never overwrite captions already set in the admin boxes.
+        // Do not fall back to KNOWN_MEDIA_CAPTIONS here — that was reverting video caption edits.
         const inHtmlMedia = Array.from(doc.querySelectorAll('img, video'))
         inHtmlMedia.forEach((el) => {
           const src = (el.getAttribute('src') || el.querySelector('source')?.getAttribute('src') || '').trim()
-          if (src && !cleanedImages.some((m) => isSameImage(m.url, src))) {
-            const isVid = el.tagName.toLowerCase() === 'video' || isVideoUrl(src)
-            const cap = el.getAttribute('data-caption') || el.getAttribute('alt') || el.getAttribute('title') || getKnownCaption(src) || ''
-            cleanedImages.push({
-              url: src,
-              caption: cap,
-              alt: cap,
-              type: isVid ? 'video' : 'image'
-            })
-          }
+          if (!src) return
+          const existing = cleanedImages.find((m) => isSameImage(m.url, src))
+          if (existing) return
+          const isVid = el.tagName.toLowerCase() === 'video' || isVideoUrl(src)
+          const figcap = el.closest('figure')?.querySelector('figcaption')?.textContent?.trim() || ''
+          const cap =
+            el.getAttribute('data-caption')?.trim() ||
+            figcap ||
+            el.getAttribute('alt')?.trim() ||
+            el.getAttribute('title')?.trim() ||
+            ''
+          pushUniqueMedia({
+            url: src,
+            caption: cap,
+            type: isVid ? 'video' : 'image'
+          })
         })
 
         // 2a. If a featured hero video is set, strip matching embeds from body HTML so the

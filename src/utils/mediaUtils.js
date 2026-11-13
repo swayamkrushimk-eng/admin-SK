@@ -244,6 +244,16 @@ export function isSameImage(url1, url2) {
   const matchA = u1.match(/\/v\d+\/([^.?#]+)/)
   const matchB = u2.match(/\/v\d+\/([^.?#]+)/)
   if (matchA && matchB && matchA[1] === matchB[1]) return true
+  const publicId = (url) => {
+    const cleaned = url.split('?')[0].split('#')[0]
+    const withVersion = cleaned.match(/\/(?:v\d+\/)(.+?)(?:\.[a-z0-9]+)?$/i)
+    if (withVersion?.[1]) return withVersion[1]
+    const uploadPath = cleaned.match(/\/upload\/(?:(?:[^/]+\/)*?)(?:v\d+\/)?(.+?)(?:\.[a-z0-9]+)?$/i)
+    return uploadPath?.[1] || ''
+  }
+  const id1 = publicId(u1)
+  const id2 = publicId(u2)
+  if (id1 && id2 && id1 === id2) return true
   return false
 }
 
