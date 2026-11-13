@@ -200,9 +200,12 @@ const DEFAULT_ARTICLE_IMAGES = {
   'home-of-care': [
     {
       url: 'https://res.cloudinary.com/ll9equhn/image/upload/v1791531289/swayamkrushi/xg9qemgyszqdhbsjymy8.jpg',
-      caption: 'The heart and soul of Swayamkrushi: Manjulaa Kalyaan, Founder-Director',
-      alt: 'The heart and soul of Swayamkrushi: Manjulaa Kalyaan, Founder-Director',
-      type: 'image'
+      caption: '',
+      alt: "VISIONARY: Swayamkrushi is a manifestation of Manjulaa Kalyaan's dream to care for and rehabilitate persons with intellectual disabilities",
+      type: 'image',
+      placement: 'right',
+      size: 'small',
+      afterHeading: 'The heart and soul of Swayamkrushi'
     }
   ],
   'story-sowing-seeds': [
