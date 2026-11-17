@@ -1797,6 +1797,7 @@ export default function App() {
     }
 
     // Inspect contentHtml to find any embedded media that was NOT already in art.images
+    let placedBodyVideo = false
     if (initialHtml) {
       const parser = new DOMParser()
       const doc = parser.parseFromString(initialHtml, 'text/html')
@@ -1809,9 +1810,25 @@ export default function App() {
         const isVid = mediaEl.tagName.toLowerCase() === 'video' || isVideoUrl(mediaEl.getAttribute('src'))
         const src = (mediaEl.getAttribute('src') || mediaEl.querySelector('source')?.getAttribute('src') || '').trim()
         const figcap = fig.querySelector('figcaption')
+        const figurePlacement = fig.classList.contains('float-right')
+          ? 'right'
+          : fig.classList.contains('float-center')
+            ? 'center'
+            : fig.classList.contains('float-left')
+              ? 'left'
+              : undefined
+        const figureSize = fig.classList.contains('size-big')
+          ? 'big'
+          : fig.classList.contains('size-small')
+            ? 'small'
+            : undefined
+        if (isVid && (figureSize === 'big' || figurePlacement === 'center')) placedBodyVideo = true
         if (src) {
           const existing = initialImages.find((x) => isSameImage(x.url, src))
-          if (!existing) {
+          if (existing) {
+            if (!existing.placement && figurePlacement) existing.placement = figurePlacement
+            if (!existing.size && figureSize) existing.size = figureSize
+          } else {
             // Prefer caption written in HTML; do not force KNOWN_MEDIA_CAPTIONS over admin edits
             const captionText =
               figcap?.textContent?.trim() ||
@@ -1823,7 +1840,9 @@ export default function App() {
               url: src,
               caption: captionText,
               alt: captionText,
-              type: isVid ? 'video' : 'image'
+              type: isVid ? 'video' : 'image',
+              placement: figurePlacement,
+              size: figureSize
             })
           }
         }
@@ -1896,6 +1915,9 @@ export default function App() {
     }
 
     loadedArticleHtmlRef.current = initialHtml
+    const editorMediaType = placedBodyVideo ? 'image' : mediaTypeDetermined
+    const videoStem = (rawVideo.split('/').pop() || '').replace(/\.(mp4|webm|mov|m4v).*$/i, '')
+    const coverIsVideoPoster = Boolean(placedBodyVideo && videoStem && activeCover.includes(videoStem))
     setArticleForm({
       id: art.id,
       title: art.title || '',
@@ -1905,9 +1927,9 @@ export default function App() {
       category: art.category || 'Stories & Milestones',
       section: art.section || 'main',
       attribution: art.attribution || 'Swayamkrushi Archives',
-      featuredMediaType: mediaTypeDetermined,
-      mediaType: mediaTypeDetermined,
-      imageUrl: activeCover,
+      featuredMediaType: editorMediaType,
+      mediaType: editorMediaType,
+      imageUrl: coverIsVideoPoster ? '' : activeCover,
       videoUrl: rawVideo,
       videoThumbnailUrl: art.videoThumbnailUrl || generatedThumb || '',
       videoPosterUrl: art.videoPosterUrl || '',
@@ -2111,9 +2133,11 @@ export default function App() {
 
       const isTextType = articleForm.hasThumbnail === false || articleForm.featuredMediaType === 'text' || articleForm.mediaType === 'text'
       const hasExplicitVideoUrl = Boolean(articleForm.videoUrl && articleForm.videoUrl.trim().length > 5)
-      // A story can embed a video without that video being the page hero.
-      // Only treat it as the featured video when the article is already a video feature.
-      const featuredIsVideo = articleForm.featuredMediaType === 'video'
+      // A video that already sits full-width inside the story is not the page hero.
+      // Caption saves were promoting that clip and floating the photos beside the text.
+      const htmlForPlacement = loadedArticleHtmlRef.current || articleForm.contentHtml || ''
+      const placedBodyVideo = /<figure[^>]*(?:size-big|float-center)[^>]*>[\s\S]*?<video\b/i.test(htmlForPlacement)
+      const featuredIsVideo = articleForm.featuredMediaType === 'video' && !placedBodyVideo
       const isVideoType = !isTextType && featuredIsVideo && hasExplicitVideoUrl
 
       const finalMediaType = isTextType ? 'text' : (isVideoType ? 'video' : 'image')
@@ -2301,6 +2325,12 @@ export default function App() {
             const src = (mediaEl?.getAttribute('src') || mediaEl?.querySelector('source')?.getAttribute('src') || '').trim()
             if (src && (src === mediaObj.url || isSameImage(src, mediaObj.url))) {
               let figcap = fig.querySelector('figcaption')
+              const htmlCaption = (figcap?.textContent || '').trim()
+              if (!targetCaption && htmlCaption) {
+                mediaObj.caption = htmlCaption
+                mediaObj.alt = htmlCaption
+                return
+              }
               if (targetCaption) {
                 if (!figcap) {
                   figcap = doc.createElement('figcaption')
@@ -2367,9 +2397,13 @@ export default function App() {
         }
       }
 
-      const rawCoverUrl = finalMediaType === 'image'
+      let rawCoverUrl = finalMediaType === 'image'
         ? (articleForm.imageUrl?.trim() || '')
         : (customPoster || finalThumbnailUrl || articleForm.imageUrl || '')
+      if (!isVideoType && placedBodyVideo && articleForm.videoUrl) {
+        const videoStem = articleForm.videoUrl.split('/').pop().replace(/\.(mp4|webm|mov|m4v).*$/i, '')
+        if (videoStem && rawCoverUrl.includes(videoStem)) rawCoverUrl = ''
+      }
 
       const cleanedPayload = {
         ...articleForm,
@@ -2378,7 +2412,9 @@ export default function App() {
         imageAlt: articleForm.imageAlt !== undefined ? articleForm.imageAlt.trim() : '',
         featuredMediaType: finalMediaType,
         mediaType: finalMediaType,
-        videoUrl: rawVideo,
+        videoUrl: isVideoType
+          ? rawVideo
+          : (placedBodyVideo && articleForm.videoUrl ? articleForm.videoUrl.trim() : ''),
         videoThumbnailUrl: finalThumbnailUrl,
         videoPosterUrl: customPoster,
         hasThumbnail: finalHasThumb,
