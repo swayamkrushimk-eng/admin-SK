@@ -1275,6 +1275,7 @@ export default function App() {
   })
   // Ref so async handlers always get the latest targetField / targetSetter without stale closure
   const cropModalRef = useRef({ targetField: '', targetSetter: null })
+  const loadedArticleHtmlRef = useRef('')
 
   // ─── DIRECT SPEAK & DIRECTOR'S VOICE DEDICATED PAGE STATE ────────────────
   const [directSpeakSelectedId, setDirectSpeakSelectedId] = useState('story-encounter')
@@ -1731,6 +1732,7 @@ export default function App() {
   // ─── ARTICLES ACTIONS ───────────────────────────────────────────────────
   const openNewArticleModal = () => {
     setEditingArticle(null)
+    loadedArticleHtmlRef.current = ''
     setArticleForm({
       id: '',
       title: '',
@@ -1786,7 +1788,10 @@ export default function App() {
           url,
           caption: caption || '',
           alt: caption || '',
-          type: isVid ? 'video' : 'image'
+          type: isVid ? 'video' : 'image',
+          placement: typeof img === 'object' ? img.placement : undefined,
+          size: typeof img === 'object' ? img.size : undefined,
+          afterHeading: typeof img === 'object' ? (img.afterHeading || '') : ''
         }
       }).filter((item) => item.url.length > 0)
     }
@@ -1890,6 +1895,7 @@ export default function App() {
       activeCaption = DEFAULT_ARTICLE_CAPTIONS[art.id] || DEFAULT_ARTICLE_CAPTIONS[art._id] || ''
     }
 
+    loadedArticleHtmlRef.current = initialHtml
     setArticleForm({
       id: art.id,
       title: art.title || '',
@@ -2105,7 +2111,10 @@ export default function App() {
 
       const isTextType = articleForm.hasThumbnail === false || articleForm.featuredMediaType === 'text' || articleForm.mediaType === 'text'
       const hasExplicitVideoUrl = Boolean(articleForm.videoUrl && articleForm.videoUrl.trim().length > 5)
-      const isVideoType = !isTextType && (articleForm.featuredMediaType === 'video' || articleForm.mediaType === 'video' || hasExplicitVideoUrl) && hasExplicitVideoUrl
+      // A story can embed a video without that video being the page hero.
+      // Only treat it as the featured video when the article is already a video feature.
+      const featuredIsVideo = articleForm.featuredMediaType === 'video'
+      const isVideoType = !isTextType && featuredIsVideo && hasExplicitVideoUrl
 
       const finalMediaType = isTextType ? 'text' : (isVideoType ? 'video' : 'image')
       const finalHasThumb = !isTextType
@@ -2115,8 +2124,20 @@ export default function App() {
       const customPoster = isVideoType && articleForm.videoPosterUrl && articleForm.videoPosterUrl.trim().length > 5 ? articleForm.videoPosterUrl.trim() : ''
       const finalThumbnailUrl = isVideoType ? (articleForm.videoThumbnailUrl?.trim() || generatedThumb || '') : ''
 
-      // Synchronize image/video captions and ensure no user-uploaded media is lost
+      // Synchronize image/video captions and ensure no user-uploaded media is lost.
+      // The rich-text editor unwraps and moves placed figures. A caption edit must
+      // keep the article HTML that was loaded, and only update caption text.
       let finalContentHtml = articleForm.contentHtml || ''
+      const loadedHtml = loadedArticleHtmlRef.current || ''
+      if (loadedHtml) {
+        const mediaOrder = (html) => [...String(html).matchAll(/src=["']([^"']+)["']/g)]
+          .map((m) => m[1].split('/').pop())
+          .join('|')
+        const figureSig = (html) => (String(html).match(/article-inline-figure[^"']*/g) || []).join('|')
+        if (mediaOrder(finalContentHtml) !== mediaOrder(loadedHtml) || figureSig(finalContentHtml) !== figureSig(loadedHtml)) {
+          finalContentHtml = loadedHtml
+        }
+      }
       const cleanedImages = []
       const pushUniqueMedia = (entry) => {
         if (!entry?.url) return
@@ -2128,6 +2149,9 @@ export default function App() {
             existing.alt = existing.caption
           }
           if (entry.type) existing.type = entry.type
+          if (!existing.placement && entry.placement) existing.placement = entry.placement
+          if (!existing.size && entry.size) existing.size = entry.size
+          if (!existing.afterHeading && entry.afterHeading) existing.afterHeading = entry.afterHeading
           return
         }
         cleanedImages.push({
@@ -2171,10 +2195,27 @@ export default function App() {
         inHtmlMedia.forEach((el) => {
           const src = (el.getAttribute('src') || el.querySelector('source')?.getAttribute('src') || '').trim()
           if (!src) return
+          const fig = el.closest('figure')
+          const figurePlacement = fig?.classList.contains('float-right')
+            ? 'right'
+            : fig?.classList.contains('float-center')
+              ? 'center'
+              : fig?.classList.contains('float-left')
+                ? 'left'
+                : undefined
+          const figureSize = fig?.classList.contains('size-big')
+            ? 'big'
+            : fig?.classList.contains('size-small')
+              ? 'small'
+              : undefined
           const existing = cleanedImages.find((m) => isSameImage(m.url, src))
-          if (existing) return
+          if (existing) {
+            if (!existing.placement && figurePlacement) existing.placement = figurePlacement
+            if (!existing.size && figureSize) existing.size = figureSize
+            return
+          }
           const isVid = el.tagName.toLowerCase() === 'video' || isVideoUrl(src)
-          const figcap = el.closest('figure')?.querySelector('figcaption')?.textContent?.trim() || ''
+          const figcap = fig?.querySelector('figcaption')?.textContent?.trim() || ''
           const cap =
             el.getAttribute('data-caption')?.trim() ||
             figcap ||
@@ -2184,7 +2225,9 @@ export default function App() {
           pushUniqueMedia({
             url: src,
             caption: cap,
-            type: isVid ? 'video' : 'image'
+            type: isVid ? 'video' : 'image',
+            placement: figurePlacement,
+            size: figureSize
           })
         })
 
